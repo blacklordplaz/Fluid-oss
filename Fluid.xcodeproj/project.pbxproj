@@ -290,8 +290,8 @@
 				ENABLE_RESOURCE_ACCESS_USB = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				EXCLUDED_ARCHS = x86_64;
-				GENERATE_INFOPLIST_FILE = YES;
-				"INFOPLIST_FILE[sdk=*]" = "$(SRCROOT)/Info.plist";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Transcribe speech from microphone";
@@ -344,8 +344,8 @@
 				ENABLE_RESOURCE_ACCESS_USB = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				EXCLUDED_ARCHS = x86_64;
-				GENERATE_INFOPLIST_FILE = YES;
-				"INFOPLIST_FILE[sdk=*]" = "$(SRCROOT)/Info.plist";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Transcribe speech from microphone";
