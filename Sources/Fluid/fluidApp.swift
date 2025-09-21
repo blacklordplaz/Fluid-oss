@@ -19,12 +19,16 @@ struct fluidApp: App {
 
         // Initialize app settings (dock visibility, etc.)
         SettingsStore.shared.initializeAppSettings()
+        
+        // Note: App UI is designed with dark color scheme in mind
+        // All gradients and effects are optimized for dark mode
     }
     
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(menuBarManager)
+                .preferredColorScheme(.dark) // Force dark mode to prevent UI issues
         }
     }
     
