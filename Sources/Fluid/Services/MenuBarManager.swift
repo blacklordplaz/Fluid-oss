@@ -156,6 +156,11 @@ final class MenuBarManager: ObservableObject {
         openItem.target = self
         menu.addItem(openItem)
         
+        // Check for Updates
+        let updateItem = NSMenuItem(title: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
+        menu.addItem(updateItem)
+        
         menu.addItem(.separator())
         
         // Quit
@@ -182,6 +187,13 @@ final class MenuBarManager: ObservableObject {
         SettingsStore.shared.enableAIProcessing = aiProcessingEnabled
         // If a ContentView has bound to MenuBarManager, its onChange sync will mirror this
         updateMenu()
+    }
+    
+    @objc private func checkForUpdates() {
+        // Call the AppDelegate's manual update check method
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            appDelegate.checkForUpdatesManually()
+        }
     }
     
     @objc private func openMainWindow() {
