@@ -8,6 +8,7 @@
 import AppUpdater
 import SwiftUI
 import AppKit
+import PromiseKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var updater: AppUpdater?

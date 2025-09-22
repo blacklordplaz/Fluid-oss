@@ -10,14 +10,16 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/mxcl/AppUpdater.git", from: "1.0.0"),
-        .package(url: "https://github.com/FluidInference/FluidAudio", from: "0.5.0")
+        .package(url: "https://github.com/FluidInference/FluidAudio", from: "0.5.0"),
+        .package(url: "https://github.com/mxcl/PromiseKit", from: "6.0.0")
     ],
     targets: [
         .executableTarget(
             name: "Fluid",
             dependencies: [
                 "AppUpdater",
-                "FluidAudio"
+                "FluidAudio",
+                "PromiseKit"
             ]
         )
     ]
