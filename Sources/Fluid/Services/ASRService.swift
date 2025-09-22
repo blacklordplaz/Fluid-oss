@@ -26,6 +26,22 @@ import AppKit
 /// let transcribedText = await asrService.stop() // Stop and get transcription
 /// ```
 ///
+/// ## Language Support
+/// The service supports 25 European languages with Parakeet TDT v3:
+/// - Auto-detect (recommended): Automatically detects the language
+/// - Specific languages: Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian,
+///   Finnish, French, German, Greek, Hungarian, Italian, Latvian, Lithuanian, Maltese,
+///   Polish, Portuguese, Romanian, Slovak, Slovenian, Spanish, Swedish, Russian, Ukrainian
+///
+/// ## Language Configuration
+/// ```swift
+/// // Set a specific language
+/// try await asrService.setLanguage(.fr) // French
+///
+/// // Use auto-detection (default)
+/// try await asrService.setLanguage(.auto)
+/// ```
+///Tak, jasne. Cześć, co słychać?
 /// ## Thread Safety
 /// All public methods are marked with @MainActor to ensure thread safety.
 /// Audio processing happens on background threads for optimal performance.
@@ -42,11 +58,46 @@ final class ASRService: ObservableObject
     @Published var isAsrReady: Bool = false
     @Published var isDownloadingModel: Bool = false
     @Published var modelDownloadProgress: Double = 0.0
-    @Published var selectedModel: ModelOption = .parakeetTdt06bV2
+    @Published var selectedModel: ModelOption = .parakeetTdt06bV3
+    @Published var selectedLanguage: LanguageOption = .auto
+    @Published var availableLanguages: [LanguageOption] = []
 
     enum ModelOption: String, CaseIterable, Identifiable, Hashable
     {
-        case parakeetTdt06bV2 = "Parakeet TDT-0.6b v2"
+        case parakeetTdt06bV3 = "Parakeet TDT-0.6b v3"
+        var id: String { rawValue }
+        var displayName: String { rawValue }
+    }
+
+    enum LanguageOption: String, CaseIterable, Identifiable, Hashable
+    {
+        case auto = "Auto-detect"
+        case bg = "Bulgarian"
+        case hr = "Croatian"
+        case cs = "Czech"
+        case da = "Danish"
+        case nl = "Dutch"
+        case en = "English"
+        case et = "Estonian"
+        case fi = "Finnish"
+        case fr = "French"
+        case de = "German"
+        case el = "Greek"
+        case hu = "Hungarian"
+        case it = "Italian"
+        case lv = "Latvian"
+        case lt = "Lithuanian"
+        case mt = "Maltese"
+        case pl = "Polish"
+        case pt = "Portuguese"
+        case ro = "Romanian"
+        case sk = "Slovak"
+        case sl = "Slovenian"
+        case es = "Spanish"
+        case sv = "Swedish"
+        case ru = "Russian"
+        case uk = "Ukrainian"
+
         var id: String { rawValue }
         var displayName: String { rawValue }
     }
@@ -70,12 +121,18 @@ final class ASRService: ObservableObject
     private let historySize = 2 // Reduced for faster response
     private let silenceThreshold: CGFloat = 0.04 // Reasonable default
     private let noiseGateThreshold: CGFloat = 0.06
-
     init()
     {
         self.micStatus = AVCaptureDevice.authorizationStatus(for: .audio)
         self.micPermissionGranted = (self.micStatus == .authorized)
         registerDefaultDeviceChangeListener()
+        populateAvailableLanguages()
+    }
+
+    private func populateAvailableLanguages()
+    {
+        // All 25 European languages supported by Parakeet TDT v3
+        availableLanguages = LanguageOption.allCases
     }
 
     func requestMicAccess()
@@ -183,17 +240,31 @@ final class ASRService: ObservableObject
         do
         {
             try await self.ensureAsrReady()
-            guard let manager = self.asrManager else { return "" }
+            guard let manager = self.asrManager else { 
+                DebugLogger.shared.error("ASR manager is nil", source: "ASRService")
+                return "" 
+            }
+            
+            DebugLogger.shared.debug("Starting transcription with \(pcm.count) samples (\(Float(pcm.count)/16000.0) seconds)", source: "ASRService")
             let result = try await manager.transcribe(pcm, source: AudioSource.microphone)
+            DebugLogger.shared.debug("Transcription completed: '\(result.text)' (confidence: \(result.confidence))", source: "ASRService")
             // Do not update self.finalText here to avoid instant binding insert in playground
             return result.text
         }
         catch
         {
             DebugLogger.shared.error("ASR transcription failed: \(error)", source: "ASRService")
+            DebugLogger.shared.error("Error details: \(error.localizedDescription)", source: "ASRService")
+            let nsError = error as NSError
+            DebugLogger.shared.error("Error domain: \(nsError.domain), code: \(nsError.code)", source: "ASRService")
+            DebugLogger.shared.error("Error userInfo: \(nsError.userInfo)", source: "ASRService")
             return ""
         }
     }
+
+
+
+
 
     func stopWithoutTranscription()
     {
@@ -442,15 +513,20 @@ final class ASRService: ObservableObject
     /// Manual calls are typically not needed unless you want to preload models.
     func ensureAsrReady() async throws
     {
+        // Force reinitialization for v3 models by resetting state
+        isAsrReady = false
+        asrManager = nil
+        
         if isAsrReady == false
         {
             do
             {
                 DebugLogger.shared.debug("Starting ASR initialization...", source: "ASRService")
 
-                // Check model cache directory
-                let cacheDir = AsrModels.defaultCacheDirectory()
-                DebugLogger.shared.debug("Model cache directory: \(cacheDir.path)", source: "ASRService")
+                // Use separate cache directory for v3 models
+                let baseCacheDir = AsrModels.defaultCacheDirectory().deletingLastPathComponent()
+                let cacheDir = baseCacheDir.appendingPathComponent("parakeet-tdt-0.6b-v3-coreml")
+                DebugLogger.shared.debug("Model cache directory (v3): \(cacheDir.path)", source: "ASRService")
                 DebugLogger.shared.debug("Cache directory exists: \(FileManager.default.fileExists(atPath: cacheDir.path))", source: "ASRService")
 
                 let originalStderr = dup(STDERR_FILENO)
@@ -458,23 +534,30 @@ final class ASRService: ObservableObject
                 dup2(devNull, STDERR_FILENO)
                 close(devNull)
 
-                DebugLogger.shared.debug("Ensuring models exist via in-app downloader...", source: "ASRService")
-                let downloader = HuggingFaceModelDownloader()
-                try await downloader.ensureModelsPresent(at: cacheDir) { progress, item in
-                    DispatchQueue.main.async {
-                        self.isDownloadingModel = progress < 1.0
-                        self.modelDownloadProgress = max(0.0, min(1.0, progress))
-                    }
-                    DebugLogger.shared.debug(String(format: "Download progress: %.0f%% (%@)", progress * 100.0, item), source: "ASRService")
+                DebugLogger.shared.debug("Using FluidAudio's v3 loader (AsrModels.downloadAndLoad)", source: "ASRService")
+
+                // Force v3: remove any v2 cache directory so no fallback occurs
+                let v2CacheDir = baseCacheDir.appendingPathComponent("parakeet-tdt-0.6b-v2-coreml")
+                if FileManager.default.fileExists(atPath: v2CacheDir.path) {
+                    try FileManager.default.removeItem(at: v2CacheDir)
+                    DebugLogger.shared.debug("Removed v2 cache directory to force v3 download", source: "ASRService")
                 }
-                DebugLogger.shared.debug("Models ensured in cache. Now loading from disk (local loader, no network)...", source: "ASRService")
-                let models = try await downloader.loadLocalAsrModels(from: cacheDir)
-                DebugLogger.shared.debug("Models loaded successfully from cache directory (local)", source: "ASRService")
+
+                DispatchQueue.main.async {
+                    self.isDownloadingModel = true
+                    self.modelDownloadProgress = 0.0
+                }
+                let models = try await AsrModels.downloadAndLoad()
+                DispatchQueue.main.async {
+                    self.isDownloadingModel = false
+                    self.modelDownloadProgress = 1.0
+                }
+                DebugLogger.shared.debug("FluidAudio models loaded successfully (v3)", source: "ASRService")
                 
                 if self.asrManager == nil
                 {
                     DebugLogger.shared.debug("Creating new AsrManager...", source: "ASRService")
-                    self.asrManager = AsrManager(config: ASRConfig(realtimeMode: false))
+                    self.asrManager = AsrManager(config: ASRConfig.default)
                 }
                 if let manager = self.asrManager
                 {
@@ -537,9 +620,51 @@ final class ASRService: ObservableObject
         await MainActor.run { self.isDownloadingModel = false }
     }
 
+    // MARK: - Language configuration
+    func setLanguage(_ language: LanguageOption) async throws
+    {
+        selectedLanguage = language
+        DebugLogger.shared.debug("Setting ASR language to: \(language.displayName)", source: "ASRService")
+
+        // Force reinitialization with new language setting
+        isAsrReady = false
+        asrManager = nil
+
+        // Reinitialize with new language configuration
+        try await ensureAsrReady()
+    }
+
+    // MARK: - Cache management
+    func clearModelCache() async throws
+    {
+        DebugLogger.shared.debug("Clearing all model caches to force fresh download", source: "ASRService")
+
+        // Clear v2 cache
+        let baseCacheDir = AsrModels.defaultCacheDirectory().deletingLastPathComponent()
+        let v2CacheDir = baseCacheDir.appendingPathComponent("parakeet-tdt-0.6b-v2-coreml")
+        if FileManager.default.fileExists(atPath: v2CacheDir.path) {
+            try FileManager.default.removeItem(at: v2CacheDir)
+            DebugLogger.shared.debug("Removed v2 cache directory", source: "ASRService")
+        }
+
+        // Clear v3 cache
+        let v3CacheDir = baseCacheDir.appendingPathComponent("parakeet-tdt-0.6b-v3-coreml")
+        if FileManager.default.fileExists(atPath: v3CacheDir.path) {
+            try FileManager.default.removeItem(at: v3CacheDir)
+            DebugLogger.shared.debug("Removed v3 cache directory", source: "ASRService")
+        }
+
+        // Force reinitialization
+        isAsrReady = false
+        asrManager = nil
+
+        // Reinitialize to download fresh models
+        try await ensureAsrReady()
+    }
+
     // MARK: - Typing convenience for compatibility
     private let typingService = TypingService() // Reuse instance to avoid conflicts
-    
+
     func typeTextToActiveField(_ text: String)
     {
         DebugLogger.shared.debug("typeTextToActiveField called with: \"\(text.prefix(50))\(text.count > 50 ? "..." : "")\"", source: "ASRService")
@@ -548,5 +673,3 @@ final class ASRService: ObservableObject
         DebugLogger.shared.debug("typingService.typeTextInstantly call completed", source: "ASRService")
     }
 }
-
-

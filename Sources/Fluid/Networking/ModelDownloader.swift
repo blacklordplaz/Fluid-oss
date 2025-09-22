@@ -31,8 +31,8 @@ final class HuggingFaceModelDownloader
     /// Initialize with default model repository settings
     init()
     {
-        self.owner = "BarathwajAnandan"
-        self.repo = "parakeet-tdt-0.6b-v2-coreml-optim"
+        self.owner = "FluidInference"
+        self.repo = "parakeet-tdt-0.6b-v3-coreml"
         self.revision = "main"
         self.baseApiURL = URL(string: "https://huggingface.co/api/models/")!
             .appendingPathComponent(owner)
@@ -161,14 +161,11 @@ final class HuggingFaceModelDownloader
     private func requiredItems() -> [ModelItem]
     {
         return [
-            // Loader expects this exact name (typo preserved in upstream API)
-            ModelItem(path: "Melspectogram.mlmodelc", isDirectory: true),
-            ModelItem(path: "ParakeetEncoder_v2.mlmodelc", isDirectory: true),
-            ModelItem(path: "ParakeetDecoder.mlmodelc", isDirectory: true),
-            ModelItem(path: "RNNTJoint.mlmodelc", isDirectory: true),
-            ModelItem(path: "TokenDurationPrediction.mlmodelc", isDirectory: true),
-            ModelItem(path: "parakeet_vocab.json", isDirectory: false),
-            ModelItem(path: "config.json", isDirectory: false)
+            // Preferred v3 unified model file names used by FluidAudio 0.5+
+            ModelItem(path: "MelEncoder.mlmodelc", isDirectory: true),
+            ModelItem(path: "Decoder.mlmodelc", isDirectory: true),
+            ModelItem(path: "JointDecision.mlmodelc", isDirectory: true),
+            ModelItem(path: "parakeet_v3_vocab.json", isDirectory: false)
         ]
     }
 
@@ -301,32 +298,52 @@ final class HuggingFaceModelDownloader
 
 extension HuggingFaceModelDownloader
 {
-    /// Load ASR models directly from disk without invoking FluidAudio's DownloadUtils
+    /// Load ASR models directly from disk using unified v3 model names
     func loadLocalAsrModels(from repoDirectory: URL) async throws -> AsrModels
     {
         let config = AsrModels.defaultConfiguration()
 
-        let melUrl = repoDirectory.appendingPathComponent("Melspectogram.mlmodelc")
-        let encUrl = repoDirectory.appendingPathComponent("ParakeetEncoder_v2.mlmodelc")
-        let decUrl = repoDirectory.appendingPathComponent("ParakeetDecoder.mlmodelc")
-        let jointUrl = repoDirectory.appendingPathComponent("RNNTJoint.mlmodelc")
-        let tokenUrl = repoDirectory.appendingPathComponent("TokenDurationPrediction.mlmodelc")
+        // Unified v3 model paths
+        let melEncUrl = repoDirectory.appendingPathComponent("MelEncoder.mlmodelc")
+        let decUrl = repoDirectory.appendingPathComponent("Decoder.mlmodelc")
+        let jointUrl = repoDirectory.appendingPathComponent("JointDecision.mlmodelc")
 
-        let mel = try MLModel(contentsOf: melUrl, configuration: config)
-        let enc = try MLModel(contentsOf: encUrl, configuration: config)
-        let dec = try MLModel(contentsOf: decUrl, configuration: config)
+        print("[ModelDL] Loading v3 models from: \(repoDirectory.path)")
+        print("[ModelDL] MelEncoder path: \(melEncUrl.path)")
+        print("[ModelDL] Decoder path: \(decUrl.path)")
+        print("[ModelDL] JointDecision path: \(jointUrl.path)")
+
+        // Check existence
+        let fm = FileManager.default
+        print("[ModelDL] MelEncoder exists: \(fm.fileExists(atPath: melEncUrl.path))")
+        print("[ModelDL] Decoder exists: \(fm.fileExists(atPath: decUrl.path))")
+        print("[ModelDL] JointDecision exists: \(fm.fileExists(atPath: jointUrl.path))")
+
+        // Load models with configuration
+        let melEncoder = try MLModel(contentsOf: melEncUrl, configuration: config)
+        let decoder = try MLModel(contentsOf: decUrl, configuration: config)
         let joint = try MLModel(contentsOf: jointUrl, configuration: config)
-        let token = try MLModel(contentsOf: tokenUrl, configuration: config)
 
+        // Load vocabulary (JSON: {"0": "<pad>", ...}) from repo root
+        let vocabPath = repoDirectory.deletingLastPathComponent().appendingPathComponent("parakeet-tdt-0.6b-v3-coreml").appendingPathComponent("parakeet_v3_vocab.json")
+        guard fm.fileExists(atPath: vocabPath.path) else {
+            throw NSError(domain: "ModelDL", code: -2, userInfo: [NSLocalizedDescriptionKey: "Vocabulary file not found at \(vocabPath.path)"])
+        }
+        let vocabData = try Data(contentsOf: vocabPath)
+        let raw = try JSONSerialization.jsonObject(with: vocabData) as? [String: String] ?? [:]
+        var vocabulary: [Int: String] = [:]
+        vocabulary.reserveCapacity(raw.count)
+        for (k, v) in raw {
+            if let idx = Int(k) { vocabulary[idx] = v }
+        }
+
+        print("[ModelDL] Creating AsrModels (unified v3)")
         return AsrModels(
-            melspectrogram: mel,
-            encoder: enc,
-            decoder: dec,
+            melEncoder: melEncoder,
+            decoder: decoder,
             joint: joint,
-            tokenDuration: token,
-            configuration: config
+            configuration: config,
+            vocabulary: vocabulary
         )
     }
 }
-
-

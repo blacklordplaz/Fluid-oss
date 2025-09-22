@@ -15,9 +15,9 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		7C078D912E3B339200FB7CAC /* Fluid */ = {
+		7C078D912E3B339200FB7CAC /* Sources/Fluid */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Sources/Fluid";
+			path = Sources/Fluid;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -37,7 +37,7 @@
 		7C078D862E3B339200FB7CAC = {
 			isa = PBXGroup;
 			children = (
-				7C078D912E3B339200FB7CAC /* Fluid */,
+				7C078D912E3B339200FB7CAC /* Sources/Fluid */,
 				7C078D902E3B339200FB7CAC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -66,7 +66,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				7C078D912E3B339200FB7CAC /* Fluid */,
+				7C078D912E3B339200FB7CAC /* Sources/Fluid */,
 			);
 			name = fluid;
 			packageProductDependencies = (
@@ -291,7 +291,7 @@
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				EXCLUDED_ARCHS = x86_64;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "Info.plist";
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Transcribe speech from microphone";
@@ -345,7 +345,7 @@
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				EXCLUDED_ARCHS = x86_64;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "Info.plist";
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Transcribe speech from microphone";

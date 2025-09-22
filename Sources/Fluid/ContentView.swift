@@ -1410,6 +1410,20 @@ struct ContentView: View {
                                         .stroke(.white.opacity(0.1), lineWidth: 1)
                                 )
                         )
+
+                        // Helpful link: Supported languages
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Image(systemName: "link")
+                                .foregroundStyle(.secondary)
+                            Link(
+                                "Supported languages",
+                                destination: URL(string: "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3")!
+                            )
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                        
                     }
                 }
                 .padding(24)
@@ -3725,4 +3739,3 @@ struct CardAppearAnimation: ViewModifier {
             .animation(.spring(response: 0.8, dampingFraction: 0.75, blendDuration: 0.2).delay(delay), value: appear)
     }
 }
-
