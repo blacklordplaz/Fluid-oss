@@ -50,4 +50,12 @@ This project is licensed under the [Creative Commons Attribution 4.0 Internation
 
 ---
 
-Star this repo if you find it useful and want to support development!
+**This project is completely free and open source.** Since I don't get anything out of this other than helping the community, the only way you can support this work is by starring the repo. 
+
+**Please star this repository if:**
+- You find Fluid useful
+- You want to see more AI improvements 
+- You appreciate free, quality software
+- You want to help others discover this tool
+
+Your star is the only "payment" I ask for this free software. It helps with visibility and motivates continued development.
