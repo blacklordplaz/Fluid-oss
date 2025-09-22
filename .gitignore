@@ -108,6 +108,21 @@ iOSInjectionProject/
 secrets.json
 config/secrets.yml
 
+## Xcode Signing and Provisioning
+# Never commit signing certificates, provisioning profiles, or personal team info
+*.mobileprovision
+*.provisionprofile
+*.cer
+*.p12
+*.keychain
+*.entitlements.bak
+*/*.entitlements.bak
+
+## Developer-specific Xcode settings (for open source)
+# Each developer should have their own team/bundle ID setup
+Fluid.xcodeproj/project.pbxproj.local
+xcconfig/Local.xcconfig
+
 ## Logs
 *.log
 logs/
