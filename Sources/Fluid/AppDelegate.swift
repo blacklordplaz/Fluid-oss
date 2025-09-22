@@ -30,22 +30,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     // MARK: - Manual Update Check
     @objc func checkForUpdatesManually() {
-        guard let updater = updater else {
-            DebugLogger.shared.error("AppUpdater not initialized", source: "AppDelegate")
-            showUpdateAlert(title: "Update Error", message: "Update system not available")
-            return
-        }
+        // Confirm invocation
+        print("🔎 Manual update check triggered")
+        NSLog("🔎 Manual update check triggered")
         
-        DebugLogger.shared.info("Manual update check requested", source: "AppDelegate")
+        // We use SimpleUpdater for manual checks; AppUpdater instance is optional
         
-        updater.check().catch(policy: .allErrors) { error in
-            DispatchQueue.main.async {
-                if error.isCancelled {
-                    // User is already up-to-date
+        // Get current app version for debugging
+        let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
+        DebugLogger.shared.info("Manual update check requested. Current version: \(currentVersion)", source: "AppDelegate")
+        DebugLogger.shared.info("Checking repository: altic-dev/Fluid-oss", source: "AppDelegate")
+        print("🔍 DEBUG: Manual update check started - Current version: \(currentVersion)")
+        print("🔍 DEBUG: Repository: altic-dev/Fluid-oss")
+        
+        Task {
+            do {
+                // Use our tolerant updater to handle v-prefixed tags and 2-part versions
+                try await SimpleUpdater.shared.checkAndUpdate(owner: "altic-dev", repo: "Fluid-oss")
+                // If we get here, an update was found; SimpleUpdater will relaunch on success
+                // Show a quick heads-up before app restarts
+                self.showUpdateAlert(title: "Update Found!", message: "A new version is available and will be installed now.")
+            } catch {
+                if let pmkError = error as? PMKError, pmkError.isCancelled {
                     DebugLogger.shared.info("App is already up-to-date", source: "AppDelegate")
                     self.showUpdateAlert(title: "No Updates", message: "You're already running the latest version of Fluid!")
                 } else {
-                    // Handle update error
                     DebugLogger.shared.error("Update check failed: \(error)", source: "AppDelegate")
                     self.showUpdateAlert(title: "Update Check Failed", message: "Unable to check for updates. Please try again later.\n\nError: \(error.localizedDescription)")
                 }

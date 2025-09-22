@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import PromiseKit
 
 @MainActor
 final class MenuBarManager: ObservableObject {
@@ -157,7 +158,7 @@ final class MenuBarManager: ObservableObject {
         menu.addItem(openItem)
         
         // Check for Updates
-        let updateItem = NSMenuItem(title: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: "")
+        let updateItem = NSMenuItem(title: "Check for Updates...", action: #selector(checkForUpdates(_:)), keyEquivalent: "")
         updateItem.target = self
         menu.addItem(updateItem)
         
@@ -189,10 +190,39 @@ final class MenuBarManager: ObservableObject {
         updateMenu()
     }
     
-    @objc private func checkForUpdates() {
-        // Call the AppDelegate's manual update check method
+    @objc private func checkForUpdates(_ sender: Any?) {
+        print("🔎 Menu action: Check for Updates…")
+        NSLog("🔎 Menu action: Check for Updates…")
+
+        // Call the AppDelegate's manual update check method if available
         if let appDelegate = NSApp.delegate as? AppDelegate {
             appDelegate.checkForUpdatesManually()
+            return
+        }
+
+        // Fallback: perform direct, tolerant check so the menu item always does something
+        Task { @MainActor in
+            do {
+                try await SimpleUpdater.shared.checkAndUpdate(owner: "altic-dev", repo: "Fluid-oss")
+                let ok = NSAlert()
+                ok.messageText = "Update Found!"
+                ok.informativeText = "A new version is available and will be installed now."
+                ok.alertStyle = .informational
+                ok.addButton(withTitle: "OK")
+                ok.runModal()
+            } catch {
+                let msg = NSAlert()
+                if let pmkError = error as? PMKError, pmkError.isCancelled {
+                    msg.messageText = "You’re Up To Date"
+                    msg.informativeText = "You’re already running the latest version of Fluid."
+                } else {
+                    msg.messageText = "Update Check Failed"
+                    msg.informativeText = "Unable to check for updates. Please try again later.\n\nError: \(error.localizedDescription)"
+                }
+                msg.alertStyle = .informational
+                msg.addButton(withTitle: "OK")
+                msg.runModal()
+            }
         }
     }
     

@@ -215,6 +215,12 @@ struct ContentView: View {
                     }
 
                     guard isRecordingShortcut else {
+                        // Check for escape key to cancel ASR recording
+                        if event.keyCode == 53 && asr.isRunning {
+                            DebugLogger.shared.debug("NSEvent monitor: Escape pressed, cancelling ASR recording", source: "ContentView")
+                            asr.stopWithoutTranscription()
+                            return nil
+                        }
                         DebugLogger.shared.debug("NSEvent monitor: Not recording shortcut, forwarding event", source: "ContentView")
                         return event
                     }
@@ -276,7 +282,7 @@ struct ContentView: View {
                 return event
             }
         }
-        .onChange(of: accessibilityEnabled) { _, enabled in
+        .onChange(of: accessibilityEnabled) { enabled in
             if enabled && hotkeyManager != nil && !hotkeyManagerInitialized {
                 DebugLogger.shared.debug("Accessibility enabled, reinitializing hotkey manager", source: "ContentView")
                 hotkeyManager?.reinitialize()
@@ -326,8 +332,8 @@ struct ContentView: View {
             asr.stopWithoutTranscription()
             overlay?.hide()
         }
-        .onChange(of: hotkeyShortcut) { oldValue, newValue in
-            DebugLogger.shared.debug("Hotkey shortcut changed from \(oldValue.displayString) to \(newValue.displayString)", source: "ContentView")
+        .onChange(of: hotkeyShortcut) { newValue in
+            DebugLogger.shared.debug("Hotkey shortcut changed to \(newValue.displayString)", source: "ContentView")
             hotkeyManager?.updateShortcut(newValue)
 
             // Update initialization status after shortcut change
@@ -336,7 +342,7 @@ struct ContentView: View {
                 DebugLogger.shared.debug("Hotkey manager initialized: \(self.hotkeyManagerInitialized)", source: "ContentView")
             }
         }
-        .onChange(of: asr.isRunning) { _, running in
+        .onChange(of: asr.isRunning) { running in
             // Prevent rapid state changes that could cause cycles
             guard overlayVisible != running else { return }
             
@@ -1374,6 +1380,11 @@ struct ContentView: View {
                             .font(.caption)
                             .foregroundStyle(asr.isAsrReady ? .white : .secondary)
                             .padding(.leading, 4)
+                        
+                        Text("Automatically detects and transcribes 25 European languages")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.leading, 4)
 
                         // Model status indicator (non-clickable)
                         HStack {
@@ -1734,7 +1745,7 @@ struct ContentView: View {
                 HStack(spacing: 16) {
                     Toggle("Enable AI Enhancement", isOn: $enableAIProcessing)
                         .toggleStyle(GlassToggleStyle())
-                        .onChange(of: enableAIProcessing) { _, newValue in
+                        .onChange(of: enableAIProcessing) { newValue in
                             SettingsStore.shared.enableAIProcessing = newValue
                         }
                     
@@ -1914,7 +1925,7 @@ struct ContentView: View {
                 .pickerStyle(.menu)
                 .frame(width: 180, alignment: .leading)
                 .layoutPriority(1)
-                .onChange(of: selectedProviderID) { _, newValue in
+                .onChange(of: selectedProviderID) { newValue in
                     switch newValue {
                     case "openai":
                         openAIBaseURL = "https://api.openai.com/v1"
@@ -2130,7 +2141,7 @@ struct ContentView: View {
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 350)
                         .layoutPriority(1)
-                        .onChange(of: openAIBaseURL) { _, _ in
+                        .onChange(of: openAIBaseURL) { _ in
                             updateCurrentProvider()
                         }
                 }
@@ -2439,24 +2450,24 @@ struct ContentView: View {
                 selectedModel = first
             }
         }
-        .onChange(of: asr.isRunning) { _, newValue in
+        .onChange(of: asr.isRunning) { newValue in
             // Mark playground as used when user starts recording
             if newValue && !playgroundUsed {
                 playgroundUsed = true
             }
         }
-        .onChange(of: asr.finalText) { _, newValue in
+        .onChange(of: asr.finalText) { newValue in
             // Also mark as used when text appears in playground
             if !newValue.isEmpty && !playgroundUsed {
                 playgroundUsed = true
             }
         }
-        .onChange(of: enableAIProcessing) { _, newValue in
+        .onChange(of: enableAIProcessing) { newValue in
             SettingsStore.shared.enableAIProcessing = newValue
             // Sync to menu bar immediately
             menuBarManager.aiProcessingEnabled = newValue
         }
-        .onChange(of: selectedModel) { _, newValue in
+        .onChange(of: selectedModel) { newValue in
             if newValue != "__ADD_MODEL__" {
                 selectedModelByProvider[currentProvider] = newValue
                 SettingsStore.shared.selectedModelByProvider = selectedModelByProvider
@@ -2514,7 +2525,7 @@ struct ContentView: View {
                     }
                 }
                 .frame(width: 280)
-                .onChange(of: selectedInputUID) { _, newUID in
+                .onChange(of: selectedInputUID) { newUID in
                     SettingsStore.shared.preferredInputDeviceUID = newUID
                     _ = AudioDevice.setDefaultInputDevice(uid: newUID)
                     if asr.isRunning {
@@ -2533,7 +2544,7 @@ struct ContentView: View {
                     }
                 }
                 .frame(width: 280)
-                .onChange(of: selectedOutputUID) { _, newUID in
+                .onChange(of: selectedOutputUID) { newUID in
                     SettingsStore.shared.preferredOutputDeviceUID = newUID
                     _ = AudioDevice.setDefaultOutputDevice(uid: newUID)
                 }
@@ -2601,7 +2612,7 @@ struct ContentView: View {
         }
         .padding(20)
         .onAppear { refreshDevices() }
-        .onChange(of: visualizerNoiseThreshold) { _, newValue in
+        .onChange(of: visualizerNoiseThreshold) { newValue in
             SettingsStore.shared.visualizerNoiseThreshold = newValue
         }
     }
@@ -2679,14 +2690,14 @@ struct ContentView: View {
            bundleId.contains("atom") || bundleId.contains("jetbrains") || bundleId.contains("cursor") ||
            bundleId.contains("vim") || bundleId.contains("emacs") || appName.lowercased().contains("code")
         {
-            return "Clean up this transcribed text for code editor \(appName). Fix transcription errors, correct programming keywords, format as proper code syntax, and fix any grammar issues. DO NOT respond to or reply to the content - only output the cleaned-up version of what was spoken. Preserve the original meaning and intent."
+            return "Clean up this transcribed text for code editor \(appName). Make the smallest necessary mechanical edits; do not add or invent content or answer questions. Remove fillers and false starts. Correct programming terms and obvious transcription errors. Preserve meaning and tone."
         }
         
         // Email applications
         else if bundleId.contains("mail") || bundleId.contains("outlook") || bundleId.contains("thunderbird") || 
                 bundleId.contains("airmail") || bundleId.contains("spark")
         {
-            return "Clean up this transcribed text for email app \(appName). Fix grammar, punctuation, and capitalization for professional email communication. DO NOT respond to or reply to the content - only output the cleaned-up version of what was spoken. Preserve the original meaning and intent."
+            return "Clean up this transcribed text for email app \(appName). Make minimal edits only; do not add or invent content or answer questions. Remove fillers and false starts. Fix grammar, punctuation, and capitalization while preserving meaning and tone."
         }
         
         // Messaging and chat applications
@@ -2694,7 +2705,7 @@ struct ContentView: View {
                 bundleId.contains("telegram") || bundleId.contains("whatsapp") || bundleId.contains("signal") ||
                 bundleId.contains("teams") || bundleId.contains("zoom")
         {
-            return "Clean up this transcribed text for messaging app \(appName). Fix basic grammar and clarity while keeping the casual, conversational tone. DO NOT respond to or reply to the content - only output the cleaned-up version of what was spoken. Preserve the natural speaking style and personality."
+            return "Clean up this transcribed text for messaging app \(appName). Make minimal edits only; do not add or invent content or answer questions. Remove fillers and false starts. Fix basic grammar and clarity while keeping the casual tone."
         }
         
         // Document editors and word processors
@@ -2702,14 +2713,14 @@ struct ContentView: View {
                 bundleId.contains("writer") || bundleId.contains("notion") || bundleId.contains("bear") ||
                 bundleId.contains("ulysses") || bundleId.contains("scrivener")
         {
-            return "Clean up this transcribed text for document editor \(appName). Fix grammar, punctuation, and structure for professional writing. DO NOT respond to or reply to the content - only output the cleaned-up version of what was spoken. Preserve the original meaning and intent."
+            return "Clean up this transcribed text for document editor \(appName). Make minimal edits only; do not add or invent content or answer questions. Remove fillers and false starts. Fix grammar, punctuation, and structure while preserving meaning."
         }
         
         // Note-taking applications
         else if bundleId.contains("notes") || bundleId.contains("obsidian") || bundleId.contains("roam") || 
                 bundleId.contains("logseq") || bundleId.contains("evernote") || bundleId.contains("onenote")
         {
-            return "Clean up this transcribed text for note-taking app \(appName). Fix grammar and organize into clear, readable notes. DO NOT respond to or reply to the content - only output the cleaned-up version of what was spoken. Preserve all key points and ideas."
+            return "Clean up this transcribed text for note-taking app \(appName). Make minimal edits only; do not add or invent content or answer questions. Remove fillers and false starts. Fix grammar and organize into clear, readable notes without adding information."
         }
         
         // Browsers (various web apps). Include: Safari, Chrome, Firefox, Edge, Arc, Brave, Dia, Comet
@@ -2724,27 +2735,27 @@ struct ContentView: View {
             if let inferred = inferWebContext(from: windowTitle, appName: appName) {
                 return inferred
             }
-            return "Clean up this transcribed text for web browser \(appName). Fix grammar and formatting for web applications. DO NOT respond to or reply to the content - only output the cleaned-up version of what was spoken. Preserve the original meaning and intent."
+            return "Clean up this transcribed text for web browser \(appName). Make minimal edits only; do not add or invent content or answer questions. Remove fillers and false starts. Fix grammar and basic formatting while preserving meaning."
         }
         
         // Terminal and command line tools
         else if bundleId.contains("terminal") || bundleId.contains("iterm") || bundleId.contains("console") ||
                 appName.lowercased().contains("terminal")
         {
-            return "Clean up this transcribed text for terminal \(appName). Fix command syntax, file paths, and technical terms. DO NOT respond to or reply to the content - only output the cleaned-up version of what was spoken as proper command-line input."
+            return "Clean up this transcribed text for terminal \(appName). Make minimal edits only; do not add or invent content or answer questions. Remove fillers and false starts. Fix command syntax, file paths, and technical terms without adding options or commands."
         }
         
         // Social media and creative apps
         else if bundleId.contains("twitter") || bundleId.contains("facebook") || bundleId.contains("instagram") ||
                 bundleId.contains("tiktok") || bundleId.contains("linkedin")
         {
-            return "Clean up this transcribed text for social media app \(appName). Fix basic grammar while keeping the natural, engaging tone. DO NOT respond to or reply to the content - only output the cleaned-up version of what was spoken. Preserve personality and casual expression."
+            return "Clean up this transcribed text for social media app \(appName). Make minimal edits only; do not add or invent content or answer questions. Remove fillers and false starts. Fix basic grammar while keeping the natural, engaging tone."
         }
         
         // Default fallback
         else
         {
-            return "Clean up this transcribed text for \(appName). Fix grammar, punctuation, and formatting errors. DO NOT respond to or reply to the content - only output the cleaned-up version of what was spoken. Preserve the original meaning and intent."
+            return "Clean up this transcribed text for \(appName). Make minimal edits only; do not add or invent content or answer questions. Remove fillers and false starts. Fix grammar, punctuation, and formatting while preserving meaning and tone."
         }
     }
 
@@ -2753,23 +2764,23 @@ struct ContentView: View {
         let title = windowTitle
         // Email (Gmail, Outlook Web)
         if title.contains("gmail") || title.contains("inbox") || title.contains("outlook") {
-            return "Clean up this transcribed text for email app \(appName) (web). Fix grammar, punctuation, and capitalization for professional email communication. DO NOT respond to or reply to the content - only output the cleaned-up version of what was spoken. Preserve the original meaning and intent."
+            return "Clean up this transcribed text for email app \(appName) (web). Make minimal edits only; do not add or invent content or answer questions. Remove fillers and false starts. Fix grammar, punctuation, and capitalization while preserving meaning."
         }
         // Messaging (Slack, Discord, Teams, Telegram, WhatsApp)
         if title.contains("slack") || title.contains("discord") || title.contains("teams") || title.contains("telegram") || title.contains("whatsapp") {
-            return "Clean up this transcribed text for messaging app \(appName) (web). Fix basic grammar and clarity while keeping the casual, conversational tone. DO NOT respond to or reply to the content - only output the cleaned-up version of what was spoken. Preserve the natural speaking style and personality."
+            return "Clean up this transcribed text for messaging app \(appName) (web). Make minimal edits only; do not add or invent content or answer questions. Remove fillers and false starts. Fix basic grammar and clarity while keeping the casual tone."
         }
         // Documents (Google Docs/Sheets, Notion, Confluence)
         if title.contains("google docs") || title.contains("docs") || title.contains("notion") || title.contains("confluence") || title.contains("google sheets") || title.contains("sheet") {
-            return "Clean up this transcribed text for a document editor in \(appName). Improve grammar, structure, and readability. DO NOT reply; only output the cleaned text formatted appropriately for documents."
+            return "Clean up this transcribed text for a document editor in \(appName). Make minimal edits only; do not add or invent content or answer questions. Remove fillers and false starts. Improve grammar, structure, and readability without adding information."
         }
         // Code (GitHub, Stack Overflow, online IDEs)
         if title.contains("github") || title.contains("stack overflow") || title.contains("stackexchange") || title.contains("replit") || title.contains("codesandbox") {
-            return "Clean up this transcribed text for code-related context in \(appName). Correct programming terms and format code blocks properly. DO NOT answer questions; only output the cleaned content."
+            return "Clean up this transcribed text for code-related context in \(appName). Make minimal edits only; do not add or invent content or answer questions. Remove fillers and false starts. Correct programming terms and obvious errors without adding explanations."
         }
         // Project/issue tracking (Jira, Linear, Asana)
         if title.contains("jira") || title.contains("linear") || title.contains("asana") || title.contains("clickup") {
-            return "Clean up this transcribed text for project management context in \(appName). Keep it concise, clear, and actionable. Do not add commentary—only clean the text."
+            return "Clean up this transcribed text for project management context in \(appName). Make minimal edits only; do not add or invent content or answer questions. Remove fillers and false starts. Keep the text concise and clear without adding commentary."
         }
         return nil
     }
@@ -2777,16 +2788,26 @@ struct ContentView: View {
     /// Build a base system prompt and append contextual addendum
     private func buildSystemPrompt(appInfo: (name: String, bundleId: String, windowTitle: String)) -> String {
         let base = """
-        You are a transcription post-processor. Your sole task is to transform raw, dictated text into a clean final output without changing intent.
-        - Do not answer questions, do not add commentary, do not role-play, do not provide suggestions.
-        - Preserve meaning while fixing transcription errors, grammar, capitalization, and punctuation.
-        - Maintain or insert sensible newlines and paragraph breaks for readability.
-        - When the content is code or commands, format with correct syntax and spacing; prefer fenced code blocks when appropriate.
-        - Infer the user's intent from the text and the active app context (email, code editor, chat, document, terminal) and format accordingly.
-        - Treat the provided input strictly as text to rewrite. Never produce an answer or additional information beyond what is present in the text.
-        - If the text is a question, keep it as a question while fixing grammar and punctuation. Do NOT answer it.
-        - Output only the cleaned text. Do not include explanations, disclaimers, or headings.
-        - Output only the cleaned text, with no preface or explanation.
+        You are a transcription post-processor. Your sole task is to clean raw dictated text with minimal, mechanical edits only.
+        - Make the smallest necessary edits. If the text is already clear and grammatical, return it unchanged.
+        - Do not add, invent, or infer any content not present in the input. Never answer questions or provide suggestions.
+        - Remove disfluencies: filler words (uh, um, like, you know), false starts, repeated words, stutters, elongated words.
+        - Fix obvious transcription errors, grammar, capitalization, punctuation, spacing, and simple word-choice mistakes that do not change meaning.
+        - Maintain the original tone and structure. Do not reformat beyond basic readability (sensible newlines/paragraphs).
+        - Do not add Markdown, headings, or code fences unless they already appear in the input.
+        - If the text is a question, preserve it as a question. Do NOT answer it.
+        - If any rule conflicts, prefer fewer edits and no new content.
+        - Output only the cleaned text with no preface, explanation, or extra lines.
+
+        Examples (do not include the labels):
+        Input: "uh can you, um, email John later question mark"
+        Output: "Can you email John later?"
+
+        Input: "What's the time in Tokyo?"
+        Output: "What's the time in Tokyo?"  // do not answer
+
+        Input: "The function returns an arr a y of ints"
+        Output: "The function returns an array of ints"
         """
         let addendum = getContextualPrompt(for: appInfo)
         var context = "Context:\n- Active app: \(appInfo.name) (\(appInfo.bundleId))"
@@ -2809,7 +2830,7 @@ struct ContentView: View {
         }
 
         struct ChatMessage: Codable { let role: String; let content: String }
-        struct ChatRequest: Codable { let model: String; let messages: [ChatMessage] }
+        struct ChatRequest: Codable { let model: String; let messages: [ChatMessage]; let temperature: Double? }
         struct ChatChoiceMessage: Codable { let role: String; let content: String }
         struct ChatChoice: Codable { let index: Int?; let message: ChatChoiceMessage }
         struct ChatResponse: Codable { let choices: [ChatChoice] }
@@ -2824,7 +2845,8 @@ struct ContentView: View {
             messages: [
                 ChatMessage(role: "system", content: systemPrompt),
                 ChatMessage(role: "user", content: inputText)
-            ]
+            ],
+            temperature: 0.2
         )
 
         guard let jsonData = try? JSONEncoder().encode(body) else {

@@ -8,7 +8,7 @@ protocol AIProvider
 final class OpenAICompatibleProvider: AIProvider
 {
     struct ChatMessage: Codable { let role: String; let content: String }
-    struct ChatRequest: Codable { let model: String; let messages: [ChatMessage] }
+    struct ChatRequest: Codable { let model: String; let messages: [ChatMessage]; let temperature: Double? }
     struct ChatChoiceMessage: Codable { let role: String; let content: String }
     struct ChatChoice: Codable { let index: Int?; let message: ChatChoiceMessage }
     struct ChatResponse: Codable { let choices: [ChatChoice] }
@@ -23,7 +23,8 @@ final class OpenAICompatibleProvider: AIProvider
             messages: [
                 ChatMessage(role: "system", content: systemPrompt),
                 ChatMessage(role: "user", content: userText)
-            ]
+            ],
+            temperature: 0.2
         )
 
         guard let jsonData = try? JSONEncoder().encode(body) else { return "Error: Failed to encode request" }
@@ -51,5 +52,4 @@ final class OpenAICompatibleProvider: AIProvider
         }
     }
 }
-
 

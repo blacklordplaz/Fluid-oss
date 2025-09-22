@@ -55,7 +55,7 @@ struct MouseTrackingModifier: ViewModifier {
                             let globalFrame = geometry.frame(in: .global)
                             tracker.updateWindowFrame(globalFrame)
                         }
-                        .onChange(of: geometry.frame(in: .global)) { _, newFrame in
+                        .onChange(of: geometry.frame(in: .global)) { newFrame in
                             tracker.updateWindowFrame(newFrame)
                         }
                 }

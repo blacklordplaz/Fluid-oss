@@ -8,12 +8,29 @@ echo "🚀 Starting Fluid release process..."
 VERSION=$(plutil -p Info.plist | grep CFBundleShortVersionString | cut -d '"' -f 4)
 echo "📋 Release version: $VERSION"
 
-# Build app in Release mode
-echo "🔨 Building app in Release configuration..."
-xcodebuild -project Fluid.xcodeproj -scheme Fluid -configuration Release clean build
+# Validate version format
+if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+    echo "❌ Error: Invalid version format '$VERSION'. Expected format: X.Y or X.Y.Z"
+    exit 1
+fi
 
-# Find the built app
-APP_PATH="build/Release/Fluid.app"
+# Check if release already exists
+if gh release view "v$VERSION" --repo altic-dev/Fluid-oss >/dev/null 2>&1; then
+    echo "⚠️  Warning: Release v$VERSION already exists!"
+    echo "Do you want to delete and recreate it? (y/N)"
+    read -r response
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        echo "🗑️  Deleting existing release..."
+        gh release delete "v$VERSION" --repo altic-dev/Fluid-oss --yes
+    else
+        echo "❌ Aborting release process"
+        exit 1
+    fi
+fi
+
+# Use pre-built app from Documents
+APP_PATH="/Users/barathwajanandan/Documents/Fluid.app"
+echo "📱 Using pre-built app: $APP_PATH"
 if [ ! -d "$APP_PATH" ]; then
     echo "❌ Error: Built app not found at $APP_PATH"
     exit 1
@@ -22,9 +39,9 @@ fi
 # Create zip with exact naming convention
 ZIP_NAME="Fluid-oss-${VERSION}.zip"
 echo "📦 Creating release zip: $ZIP_NAME"
-cd build/Release
-zip -r "../../$ZIP_NAME" Fluid.app
-cd ../..
+cd "$(dirname "$APP_PATH")"
+zip -r "$OLDPWD/$ZIP_NAME" Fluid.app
+cd "$OLDPWD"
 
 # Verify zip was created
 if [ ! -f "$ZIP_NAME" ]; then
@@ -46,44 +63,23 @@ create-dmg \
   --hide-extension "Fluid.app" \
   --app-drop-link 400 150 \
   "$DMG_NAME" \
-  "Fluid.app"
+  "$APP_PATH"
 
 echo "✅ DMG created successfully: $DMG_NAME"
 
 # Create GitHub release
 echo "📤 Creating GitHub release..."
 gh release create "v$VERSION" "$ZIP_NAME" "$DMG_NAME" \
-  --title "Fluid v$VERSION - Parakeet TDT v3 with Multi-Language Support" \
-  --notes "\
-## 🎉 What's New in v$VERSION
+  --repo altic-dev/Fluid-oss \
+  --title "Fluid v$VERSION" \
+  --notes "## What's New in v$VERSION
 
-- **Upgraded to Parakeet TDT v3** with unified model architecture
-- **25 European languages** with auto-detection support
-- **Enhanced UI** with language selection and documentation links
-- **Improved error handling** and logging
-- **Automatic updates** - seamless update experience!
-
-## 🚀 Installation Options
-
-### Option 1: ZIP (Recommended for Auto-Updates)
-1. Download \`$ZIP_NAME\`
-2. Extract and move \`Fluid.app\` to your Applications folder
-3. Run the app - updates will be automatic!
-
-### Option 2: DMG (Traditional Installer)
-1. Download \`$DMG_NAME\`
-2. Double-click to mount and drag \`Fluid.app\` to Applications
-3. Run the app and grant accessibility permissions
-
-## 🔧 System Requirements
-- macOS 13.0 or later
-- Apple Silicon or Intel Mac
-
-## 📦 Asset Details
-- **ZIP**: \`$ZIP_NAME\` ($(du -h "$ZIP_NAME" | cut -f1))
-  - SHA256: $(shasum -a 256 "$ZIP_NAME" | cut -d' ' -f1)
-- **DMG**: \`$DMG_NAME\` ($(du -h "$DMG_NAME" | cut -f1))
-  - SHA256: $(shasum -a 256 "$DMG_NAME" | cut -d' ' -f1)
+- Upgraded to Parakeet TDT v3 with unified model architecture
+- 25 European languages with auto-detection support
+- Enhanced UI with language selection and documentation links
+- Improved error handling and logging
+- Automatic updates support
+- Fixed UI glitches with light system preference
 "
 
 echo "✅ Release v$VERSION created successfully!"

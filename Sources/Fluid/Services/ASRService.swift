@@ -27,21 +27,12 @@ import AppKit
 /// ```
 ///
 /// ## Language Support
-/// The service supports 25 European languages with Parakeet TDT v3:
-/// - Auto-detect (recommended): Automatically detects the language
-/// - Specific languages: Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian,
-///   Finnish, French, German, Greek, Hungarian, Italian, Latvian, Lithuanian, Maltese,
-///   Polish, Portuguese, Romanian, Slovak, Slovenian, Spanish, Swedish, Russian, Ukrainian
+/// The service automatically detects and transcribes 25 European languages with Parakeet TDT v3:
+/// Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish, French, German, 
+/// Greek, Hungarian, Italian, Latvian, Lithuanian, Maltese, Polish, Portuguese, Romanian, 
+/// Slovak, Slovenian, Spanish, Swedish, Russian, and Ukrainian.
 ///
-/// ## Language Configuration
-/// ```swift
-/// // Set a specific language
-/// try await asrService.setLanguage(.fr) // French
-///
-/// // Use auto-detection (default)
-/// try await asrService.setLanguage(.auto)
-/// ```
-///Tak, jasne. Cześć, co słychać?
+/// No manual language selection is required - the model automatically detects the spoken language.
 /// ## Thread Safety
 /// All public methods are marked with @MainActor to ensure thread safety.
 /// Audio processing happens on background threads for optimal performance.
@@ -59,8 +50,6 @@ final class ASRService: ObservableObject
     @Published var isDownloadingModel: Bool = false
     @Published var modelDownloadProgress: Double = 0.0
     @Published var selectedModel: ModelOption = .parakeetTdt06bV3
-    @Published var selectedLanguage: LanguageOption = .auto
-    @Published var availableLanguages: [LanguageOption] = []
 
     enum ModelOption: String, CaseIterable, Identifiable, Hashable
     {
@@ -69,38 +58,6 @@ final class ASRService: ObservableObject
         var displayName: String { rawValue }
     }
 
-    enum LanguageOption: String, CaseIterable, Identifiable, Hashable
-    {
-        case auto = "Auto-detect"
-        case bg = "Bulgarian"
-        case hr = "Croatian"
-        case cs = "Czech"
-        case da = "Danish"
-        case nl = "Dutch"
-        case en = "English"
-        case et = "Estonian"
-        case fi = "Finnish"
-        case fr = "French"
-        case de = "German"
-        case el = "Greek"
-        case hu = "Hungarian"
-        case it = "Italian"
-        case lv = "Latvian"
-        case lt = "Lithuanian"
-        case mt = "Maltese"
-        case pl = "Polish"
-        case pt = "Portuguese"
-        case ro = "Romanian"
-        case sk = "Slovak"
-        case sl = "Slovenian"
-        case es = "Spanish"
-        case sv = "Swedish"
-        case ru = "Russian"
-        case uk = "Ukrainian"
-
-        var id: String { rawValue }
-        var displayName: String { rawValue }
-    }
 
     private let engine = AVAudioEngine()
     private var inputFormat: AVAudioFormat?
@@ -126,14 +83,8 @@ final class ASRService: ObservableObject
         self.micStatus = AVCaptureDevice.authorizationStatus(for: .audio)
         self.micPermissionGranted = (self.micStatus == .authorized)
         registerDefaultDeviceChangeListener()
-        populateAvailableLanguages()
     }
 
-    private func populateAvailableLanguages()
-    {
-        // All 25 European languages supported by Parakeet TDT v3
-        availableLanguages = LanguageOption.allCases
-    }
 
     func requestMicAccess()
     {
@@ -620,19 +571,6 @@ final class ASRService: ObservableObject
         await MainActor.run { self.isDownloadingModel = false }
     }
 
-    // MARK: - Language configuration
-    func setLanguage(_ language: LanguageOption) async throws
-    {
-        selectedLanguage = language
-        DebugLogger.shared.debug("Setting ASR language to: \(language.displayName)", source: "ASRService")
-
-        // Force reinitialization with new language setting
-        isAsrReady = false
-        asrManager = nil
-
-        // Reinitialize with new language configuration
-        try await ensureAsrReady()
-    }
 
     // MARK: - Cache management
     func clearModelCache() async throws
