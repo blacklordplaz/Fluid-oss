@@ -40,6 +40,10 @@ Build and run in Xcode. All dependencies are managed via Swift Package Manager.
 
 Stay tuned - a lot of AI improvements are coming.
 
+## Contributing
+
+Contribution guidelines will be added soon.
+
 ## Connect
 
 Follow development updates on X: [@ALTIC_DEV](https://x.com/ALTIC_DEV)
