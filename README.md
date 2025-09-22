@@ -46,7 +46,7 @@ Follow development updates on X: [@ALTIC_DEV](https://x.com/ALTIC_DEV)
 
 ## License
 
-Same as Parakeet TDT v3
+This project is licensed under the [Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/).
 
 ---
 
