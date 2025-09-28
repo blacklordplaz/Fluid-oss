@@ -75,6 +75,9 @@ struct ContentView: View {
     @State private var accessibilityEnabled = false
     @State private var hotkeyShortcut: HotkeyShortcut = SettingsStore.shared.hotkeyShortcut
     @State private var isRecordingShortcut = false
+    @State private var pendingModifierFlags: NSEvent.ModifierFlags = []
+    @State private var pendingModifierKeyCode: UInt16?
+    @State private var pendingModifierOnly = false
     @FocusState private var isTranscriptionFocused: Bool
     
     @State private var overlayVisible: Bool = false
@@ -162,6 +165,9 @@ struct ContentView: View {
             // Ensure no restart UI shows if we already have trust
             if accessibilityEnabled { showRestartPrompt = false }
             
+            // Initialize menu bar after app is ready (prevents window server crash)
+            menuBarManager.initializeMenuBar()
+            
             // Configure menu bar manager with ASR service
             menuBarManager.configure(asrService: asr)
             
@@ -215,13 +221,13 @@ struct ContentView: View {
                     }
 
                     guard isRecordingShortcut else {
-                        // Check for escape key to cancel ASR recording
                         if event.keyCode == 53 && asr.isRunning {
                             DebugLogger.shared.debug("NSEvent monitor: Escape pressed, cancelling ASR recording", source: "ContentView")
                             asr.stopWithoutTranscription()
                             return nil
                         }
                         DebugLogger.shared.debug("NSEvent monitor: Not recording shortcut, forwarding event", source: "ContentView")
+                        resetPendingShortcutState()
                         return event
                     }
                     
@@ -229,14 +235,18 @@ struct ContentView: View {
                     if keyCode == 53 {
                         DebugLogger.shared.debug("NSEvent monitor: Escape pressed, cancelling shortcut recording", source: "ContentView")
                         isRecordingShortcut = false
+                        resetPendingShortcutState()
                         return nil
                     }
-                    let newShortcut = HotkeyShortcut(keyCode: keyCode, modifierFlags: eventModifiers)
+                    
+                    let combinedModifiers = pendingModifierFlags.union(eventModifiers)
+                    let newShortcut = HotkeyShortcut(keyCode: keyCode, modifierFlags: combinedModifiers)
                     DebugLogger.shared.debug("NSEvent monitor: Recording new shortcut: \(newShortcut.displayString)", source: "ContentView")
                     hotkeyShortcut = newShortcut
                     SettingsStore.shared.hotkeyShortcut = newShortcut
                     hotkeyManager?.updateShortcut(newShortcut)
                     isRecordingShortcut = false
+                    resetPendingShortcutState()
                     DebugLogger.shared.debug("NSEvent monitor: Finished recording shortcut, isRecordingShortcut set to false", source: "ContentView")
                     return nil
                 } else if event.type == .flagsChanged {
@@ -250,33 +260,45 @@ struct ContentView: View {
 
                     guard isRecordingShortcut else {
                         DebugLogger.shared.debug("NSEvent monitor: Not recording shortcut (modifier), forwarding event", source: "ContentView")
+                        resetPendingShortcutState()
                         return event
                     }
-                    let keyCode = event.keyCode
-                    let isModifierKeyPressed = eventModifiers.isEmpty == false
-                    if isModifierKeyPressed {
-                        // Map the actual key codes for modifier keys
-                        var actualKeyCode = keyCode
-                        if eventModifiers.contains(.command) {
-                            // Determine if it's left or right command based on key code
-                            actualKeyCode = (keyCode == 55) ? 55 : 54 // 55 = left cmd, 54 = right cmd
-                        } else if eventModifiers.contains(.option) {
-                            actualKeyCode = (keyCode == 58) ? 58 : 61 // 58 = left opt, 61 = right opt
-                        } else if eventModifiers.contains(.control) {
-                            actualKeyCode = (keyCode == 59) ? 59 : 62 // 59 = left ctrl, 62 = right ctrl
-                        } else if eventModifiers.contains(.shift) {
-                            actualKeyCode = (keyCode == 56) ? 56 : 60 // 56 = left shift, 60 = right shift
+
+                    if eventModifiers.isEmpty {
+                        if pendingModifierOnly, let modifierKeyCode = pendingModifierKeyCode {
+                            let newShortcut = HotkeyShortcut(keyCode: modifierKeyCode, modifierFlags: [])
+                            DebugLogger.shared.debug("NSEvent monitor: Recording modifier-only shortcut: \(newShortcut.displayString)", source: "ContentView")
+                            hotkeyShortcut = newShortcut
+                            SettingsStore.shared.hotkeyShortcut = newShortcut
+                            hotkeyManager?.updateShortcut(newShortcut)
+                            isRecordingShortcut = false
+                            resetPendingShortcutState()
+                            DebugLogger.shared.debug("NSEvent monitor: Finished recording modifier shortcut, isRecordingShortcut set to false", source: "ContentView")
+                            return nil
                         }
-                        
-                        let newShortcut = HotkeyShortcut(keyCode: actualKeyCode, modifierFlags: [])
-                        DebugLogger.shared.debug("NSEvent monitor: Recording new shortcut (modifier only): \(newShortcut.displayString), original keyCode: \(keyCode), mapped keyCode: \(actualKeyCode)", source: "ContentView")
-                        hotkeyShortcut = newShortcut
-                        SettingsStore.shared.hotkeyShortcut = newShortcut
-                        hotkeyManager?.updateShortcut(newShortcut)
-                        isRecordingShortcut = false
-                        DebugLogger.shared.debug("NSEvent monitor: Finished recording modifier shortcut, isRecordingShortcut set to false", source: "ContentView")
+
+                        resetPendingShortcutState()
+                        DebugLogger.shared.debug("NSEvent monitor: Modifiers released without recording, continuing to wait", source: "ContentView")
                         return nil
                     }
+
+                    // Modifiers are currently pressed
+                    var actualKeyCode = event.keyCode
+                    if eventModifiers.contains(.command) {
+                        actualKeyCode = (event.keyCode == 55) ? 55 : 54 // 55 = left cmd, 54 = right cmd
+                    } else if eventModifiers.contains(.option) {
+                        actualKeyCode = (event.keyCode == 58) ? 58 : 61 // 58 = left opt, 61 = right opt
+                    } else if eventModifiers.contains(.control) {
+                        actualKeyCode = (event.keyCode == 59) ? 59 : 62 // 59 = left ctrl, 62 = right ctrl
+                    } else if eventModifiers.contains(.shift) {
+                        actualKeyCode = (event.keyCode == 56) ? 56 : 60 // 56 = left shift, 60 = right shift
+                    }
+
+                    pendingModifierFlags = eventModifiers
+                    pendingModifierKeyCode = actualKeyCode
+                    pendingModifierOnly = true
+                    DebugLogger.shared.debug("NSEvent monitor: Modifier key pressed during recording, pending modifiers: \(pendingModifierFlags)", source: "ContentView")
+                    return nil
                 }
                 
                 return event
@@ -366,7 +388,14 @@ struct ContentView: View {
             }
         }
     }
-    
+
+    private func resetPendingShortcutState()
+    {
+        pendingModifierFlags = []
+        pendingModifierKeyCode = nil
+        pendingModifierOnly = false
+    }
+
     private var sidebarView: some View {
         List(selection: $selectedSidebarItem) {
             NavigationLink(value: SidebarItem.welcome) {

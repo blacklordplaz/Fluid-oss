@@ -6,6 +6,7 @@ import PromiseKit
 final class MenuBarManager: ObservableObject {
     private var statusItem: NSStatusItem?
     private var menu: NSMenu?
+    private var isSetup: Bool = false
     
     // References to app state
     private weak var asrService: ASRService?
@@ -15,7 +16,7 @@ final class MenuBarManager: ObservableObject {
     @Published var aiProcessingEnabled: Bool = false
     
     init() {
-        setupMenuBar()
+        // Don't setup menu bar immediately - defer until app is ready
         // Initialize from persisted setting
         aiProcessingEnabled = SettingsStore.shared.enableAIProcessing
         // Reflect changes to menu when toggled from elsewhere (e.g., General tab)
@@ -25,6 +26,15 @@ final class MenuBarManager: ObservableObject {
                 self?.updateMenu()
             }
             .store(in: &cancellables)
+    }
+    
+    func initializeMenuBar() {
+        guard !isSetup else { return }
+        
+        // Ensure we're on main thread and app is active
+        DispatchQueue.main.async { [weak self] in
+            self?.setupMenuBarSafely()
+        }
     }
     
     deinit {
@@ -48,11 +58,38 @@ final class MenuBarManager: ObservableObject {
         aiProcessingEnabled = SettingsStore.shared.enableAIProcessing
     }
     
-    private func setupMenuBar() {
-        // Create status item
+    private func setupMenuBarSafely() {
+        // Check if window server connection is available
+        guard NSApp.isActive || NSApp.isRunning else {
+            // Retry after a short delay if app isn't ready
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.setupMenuBarSafely()
+            }
+            return
+        }
+        
+        do {
+            try setupMenuBar()
+            isSetup = true
+        } catch {
+            // If setup fails, retry after delay
+            print("MenuBar setup failed, retrying: \(error)")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.setupMenuBarSafely()
+            }
+        }
+    }
+    
+    private func setupMenuBar() throws {
+        // Ensure we're not already set up
+        guard !isSetup else { return }
+        
+        // Create status item with error handling
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         
-        guard let statusItem = statusItem else { return }
+        guard let statusItem = statusItem else { 
+            throw NSError(domain: "MenuBarManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to create status item"])
+        }
         
         // Set initial icon
         updateMenuBarIcon()
