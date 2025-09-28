@@ -464,6 +464,12 @@ final class ASRService: ObservableObject
     /// Manual calls are typically not needed unless you want to preload models.
     func ensureAsrReady() async throws
     {
+        // Check if we're already ready and models are loaded - avoid unnecessary flicker
+        if isAsrReady && asrManager != nil {
+            DebugLogger.shared.debug("ASR already ready with loaded models, skipping initialization", source: "ASRService")
+            return
+        }
+
         // Force reinitialization for v3 models by resetting state
         isAsrReady = false
         asrManager = nil
@@ -616,9 +622,6 @@ final class ASRService: ObservableObject
 
     func typeTextToActiveField(_ text: String)
     {
-        DebugLogger.shared.debug("typeTextToActiveField called with: \"\(text.prefix(50))\(text.count > 50 ? "..." : "")\"", source: "ASRService")
-        DebugLogger.shared.debug("About to call typingService.typeTextInstantly", source: "ASRService")
         typingService.typeTextInstantly(text)
-        DebugLogger.shared.debug("typingService.typeTextInstantly call completed", source: "ASRService")
     }
 }

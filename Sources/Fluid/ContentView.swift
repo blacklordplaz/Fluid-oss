@@ -143,6 +143,10 @@ struct ContentView: View {
     @State private var showAPIKeyEditor: Bool = false
     @State private var newProviderBaseURL: String = ""
     @State private var keyJustSaved: Bool = false
+    
+    // Feedback State
+    @State private var feedbackText: String = ""
+    @State private var includeDebugLogs: Bool = false
 
     var body: some View {
         NavigationSplitView {
@@ -213,7 +217,7 @@ struct ContentView: View {
                 let eventModifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
                 let shortcutModifiers = hotkeyShortcut.modifierFlags.intersection([.command, .option, .control, .shift])
                 
-                DebugLogger.shared.debug("NSEvent monitor - type: \(event.type), keyCode: \(event.keyCode), eventModifiers: \(eventModifiers), hotkeyShortcut: \(hotkeyShortcut.displayString), isRecordingShortcut: \(isRecordingShortcut)", source: "ContentView")
+                DebugLogger.shared.debug("NSEvent \(event.type) keyCode=\(event.keyCode) recordingShortcut=\(isRecordingShortcut)", source: "ContentView")
 
                 if event.type == .keyDown {
                     if event.keyCode == hotkeyShortcut.keyCode && eventModifiers == shortcutModifiers {
@@ -227,7 +231,6 @@ struct ContentView: View {
                             asr.stopWithoutTranscription()
                             return nil
                         }
-                        DebugLogger.shared.debug("NSEvent monitor: Not recording shortcut, forwarding event", source: "ContentView")
                         resetPendingShortcutState()
                         return event
                     }
@@ -260,7 +263,6 @@ struct ContentView: View {
                     }
 
                     guard isRecordingShortcut else {
-                        DebugLogger.shared.debug("NSEvent monitor: Not recording shortcut (modifier), forwarding event", source: "ContentView")
                         resetPendingShortcutState()
                         return event
                     }
@@ -434,6 +436,12 @@ struct ContentView: View {
                     .font(.system(size: 15, weight: .medium))
             }
             .listRowBackground(sidebarRowBackground)
+
+            NavigationLink(value: SidebarItem.feedback) {
+                Label("Feedback", systemImage: "envelope.fill")
+                    .font(.system(size: 15, weight: .medium))
+            }
+            .listRowBackground(sidebarRowBackground)
         }
         .listStyle(.sidebar)
         .navigationTitle("Fluid")
@@ -523,6 +531,8 @@ struct ContentView: View {
                     settingsView
                 case .meetingTools:
                     meetingToolsView
+                case .feedback:
+                    feedbackView
                 }
             }
         }
@@ -2579,6 +2589,160 @@ struct ContentView: View {
         .padding(20)
     }
 
+    // MARK: - Feedback View
+    private var feedbackView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Header
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "envelope.fill")
+                            .font(.system(size: 32))
+                            .foregroundStyle(.blue)
+                        VStack(alignment: .leading) {
+                            Text("Send Feedback")
+                                .font(.system(size: 28, weight: .bold))
+                            Text("Help us improve Fluid with your feedback")
+                                .font(.system(size: 16))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Text("Share your thoughts, report bugs, or suggest new features.")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 4)
+                }
+                .padding(.bottom, 8)
+
+                // Feedback Form
+                HoverableGlossyCard {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Image(systemName: "text.bubble.fill")
+                                .font(.title2)
+                                .foregroundStyle(.white)
+                            Text("Your Feedback")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                        }
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Message")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+
+                            TextEditor(text: $feedbackText)
+                                .font(.system(size: 14))
+                                .frame(height: 120)
+                                .padding(12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color.gray.opacity(0.1))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                        )
+                                )
+                                .overlay(
+                                    VStack {
+                                        if feedbackText.isEmpty {
+                                            VStack(spacing: 4) {
+                                                Text("Share your thoughts...")
+                                                    .font(.subheadline)
+                                                    .foregroundStyle(.secondary)
+                                                Text("• Report bugs or issues")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                                Text("• Suggest new features")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                                Text("• General feedback")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
+                                    }
+                                    .allowsHitTesting(false)
+                                )
+
+                            // Attachment Options
+                            VStack(alignment: .leading, spacing: 8) {
+                                Toggle("Include debug logs", isOn: $includeDebugLogs)
+                                    .toggleStyle(GlassToggleStyle())
+                                
+                                if includeDebugLogs {
+                                    Text("Debug logs will help us diagnose issues faster. No personal data is included.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.leading, 4)
+                                }
+                            }
+
+                            // Send Button
+                            HStack {
+                                Spacer()
+                                
+                                Button(action: {
+                                    sendFeedback()
+                                }) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "paperplane.fill")
+                                        Text("Send Feedback")
+                                            .fontWeight(.semibold)
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 10)
+                                }
+                                .buttonStyle(GlassButtonStyle())
+                                .disabled(feedbackText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                                .buttonHoverEffect()
+                            }
+                        }
+                    }
+                    .padding(20)
+                }
+                .modifier(CardAppearAnimation(delay: 0.1, appear: $appear))
+
+                // Contact Info
+                HoverableGlossyCard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "info.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(.blue)
+                            Text("Contact Information")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "envelope")
+                                    .foregroundStyle(.secondary)
+                                Text("alticdev@gmail.com")
+                                    .font(.subheadline)
+                                Spacer()
+                                Button("Copy") {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString("alticdev@gmail.com", forType: .string)
+                                }
+                                .buttonStyle(InlineButtonStyle())
+                                .buttonHoverEffect()
+                            }
+                            
+                            Text("We typically respond within 24-48 hours.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(16)
+                }
+                .modifier(CardAppearAnimation(delay: 0.2, appear: $appear))
+            }
+            .padding(24)
+        }
+    }
+
     // MARK: - Audio Tab
     private var audioView: some View
     {
@@ -2942,63 +3106,39 @@ struct ContentView: View {
     // MARK: - Stop and Process Transcription
     private func stopAndProcessTranscription() async {
         DebugLogger.shared.debug("stopAndProcessTranscription called", source: "ContentView")
-        
+
         // Stop the ASR service and wait for transcription to complete
         let transcribedText = await asr.stop()
-        
-        DebugLogger.shared.debug("Transcribed text: \"\(transcribedText)\"", source: "ContentView")
-        
-        guard !transcribedText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty else {
-            DebugLogger.shared.debug("No transcribed text to process", source: "ContentView")
-            return // No text to process
+
+        guard transcribedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
+            DebugLogger.shared.debug("Transcription returned empty text", source: "ContentView")
+            return
         }
-        
+
         let finalText: String
-        
-        if enableAIProcessing && !(providerAPIKeys[currentProvider] ?? "").trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
-            DebugLogger.shared.debug("Processing text through AI...", source: "ContentView")
-            // Process through AI
+
+        if enableAIProcessing && !(providerAPIKeys[currentProvider] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            DebugLogger.shared.debug("Routing transcription through AI post-processing", source: "ContentView")
             finalText = await processTextWithAI(transcribedText)
         } else {
-            DebugLogger.shared.debug("Using original transcribed text (no AI processing)", source: "ContentView")
-            // Use original transcribed text
             finalText = transcribedText
         }
-        
-        DebugLogger.shared.debug("Final text: \"\(finalText)\"", source: "ContentView")
-        DebugLogger.shared.debug("isTranscriptionFocused: \(isTranscriptionFocused)", source: "ContentView")
-        
-        // Do not update asr.finalText directly to avoid instant double-insert in playground
-        
-        // Only type to external field if TextEditor is not focused
-        // When TextEditor is focused, the binding will handle the text update
-        await MainActor.run {
-            DebugLogger.shared.debug("About to check if should type to external field", source: "ContentView")
-            
-            // Check if we're actually in the fluid app or external app
-            let frontmostApp = NSWorkspace.shared.frontmostApplication
-            let isFluidFrontmost = frontmostApp?.bundleIdentifier?.contains("fluid") == true
-            
-            DebugLogger.shared.debug("Frontmost app: \(frontmostApp?.localizedName ?? "Unknown")", source: "ContentView")
-            DebugLogger.shared.debug("Is fluid frontmost: \(isFluidFrontmost)", source: "ContentView")
-            DebugLogger.shared.debug("isTranscriptionFocused: \(isTranscriptionFocused)", source: "ContentView")
 
-            // If we're in an external app, force external typing regardless of focus state
-            if !isFluidFrontmost {
-                DebugLogger.shared.debug("External app is frontmost, forcing external text injection", source: "ContentView")
+        DebugLogger.shared.info("Transcription finalized (chars: \(finalText.count))", source: "ContentView")
+
+        await MainActor.run {
+            let frontmostApp = NSWorkspace.shared.frontmostApplication
+            let frontmostName = frontmostApp?.localizedName ?? "Unknown"
+            let isFluidFrontmost = frontmostApp?.bundleIdentifier?.contains("fluid") == true
+            let shouldTypeExternally = !isFluidFrontmost || isTranscriptionFocused == false
+
+            DebugLogger.shared.debug(
+                "Typing decision → frontmost: \(frontmostName), fluidFrontmost: \(isFluidFrontmost), editorFocused: \(isTranscriptionFocused), willTypeExternally: \(shouldTypeExternally)",
+                source: "ContentView"
+            )
+
+            if shouldTypeExternally {
                 asr.typeTextToActiveField(finalText)
-                DebugLogger.shared.debug("External typeTextToActiveField call completed", source: "ContentView")
-            } else {
-                // We're in the Fluid app - only type externally if TextEditor is NOT focused
-                if !isTranscriptionFocused {
-                    DebugLogger.shared.debug("TextEditor not focused, calling typeTextToActiveField with text: \"\(finalText.prefix(50))\(finalText.count > 50 ? "..." : "")\"", source: "ContentView")
-                    asr.typeTextToActiveField(finalText)
-                    DebugLogger.shared.debug("typeTextToActiveField call completed", source: "ContentView")
-                } else {
-                    DebugLogger.shared.debug("TextEditor is focused - typing via simulation only", source: "ContentView")
-                    asr.typeTextToActiveField(finalText)
-                    DebugLogger.shared.debug("typeTextToActiveField call completed", source: "ContentView")
-                }
             }
         }
     }
@@ -3039,17 +3179,8 @@ struct ContentView: View {
         let baseURL = openAIBaseURL.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
 
         // Debug logging
-        DebugLogger.shared.info("=== API CONNECTION TEST STARTED ===", source: "ContentView")
-        DebugLogger.shared.debug("Provider: \(currentProvider)", source: "ContentView")
-        DebugLogger.shared.debug("Base URL: \(baseURL)", source: "ContentView")
-        DebugLogger.shared.debug("API Key present: \(apiKey.isEmpty ? "NO" : "YES (length: \(apiKey.count))")", source: "ContentView")
-        DebugLogger.shared.debug("Current provider key: '\(providerAPIKeys[currentProvider] ?? "NOT_FOUND")'", source: "ContentView")
-        DebugLogger.shared.debug("API Key value (first 10 chars): \(apiKey.prefix(10))...", source: "ContentView")
-
-        DebugLogger.shared.debug("API Key format check:", source: "ContentView")
-        DebugLogger.shared.debug("  Starts with 'sk-': \(apiKey.hasPrefix("sk-") ? "YES" : "NO - OpenAI keys must start with 'sk-'")", source: "ContentView")
-        DebugLogger.shared.debug("  Contains only valid characters: \(apiKey.rangeOfCharacter(from: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_"))) == nil ? "YES" : "NO")", source: "ContentView")
-        DebugLogger.shared.debug("  Length is reasonable: \(apiKey.count >= 20 && apiKey.count <= 200 ? "YES" : "NO - Should be 20-200 chars")", source: "ContentView")
+        DebugLogger.shared.info("API connection test started (provider: \(currentProvider), baseURL: \(baseURL))", source: "ContentView")
+        DebugLogger.shared.debug("API key supplied: \(!apiKey.isEmpty), length: \(apiKey.count)", source: "ContentView")
 
         if !apiKey.hasPrefix("sk-") {
             DebugLogger.shared.warning("PROBLEM: API key doesn't start with 'sk-' - this is likely the cause of the 401 error!", source: "ContentView")
@@ -3057,7 +3188,6 @@ struct ContentView: View {
         if apiKey.count < 20 || apiKey.count > 200 {
             DebugLogger.shared.warning("PROBLEM: API key length is unusual - should be 20-200 characters!", source: "ContentView")
         }
-        DebugLogger.shared.info("=== END API ANALYSIS ===", source: "ContentView")
 
         guard !apiKey.isEmpty && !baseURL.isEmpty else {
             DebugLogger.shared.error("Missing required fields - API key or base URL is empty", source: "ContentView")
@@ -3269,6 +3399,64 @@ struct ContentView: View {
         NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications"))
     }
     
+    // MARK: - Feedback Functions
+    private func sendFeedback() {
+        let subject = "Fluid App Feedback"
+        let body = createFeedbackEmailBody()
+        
+        // Create mailto URL
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = "alticdev@gmail.com"
+        components.queryItems = [
+            URLQueryItem(name: "subject", value: subject),
+            URLQueryItem(name: "body", value: body)
+        ]
+        
+        if let mailtoURL = components.url {
+            NSWorkspace.shared.open(mailtoURL)
+            
+            // Clear the feedback form after sending
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                feedbackText = ""
+                includeDebugLogs = false
+            }
+        }
+    }
+    
+    private func createFeedbackEmailBody() -> String {
+        var body = "Hi Fluid Team,\n\n"
+        body += feedbackText
+        body += "\n\n"
+        
+        if includeDebugLogs {
+            body += "--- Debug Information ---\n"
+            body += "App Version: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")\n"
+            body += "Build: \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown")\n"
+            body += "macOS Version: \(ProcessInfo.processInfo.operatingSystemVersionString)\n"
+            body += "Date: \(Date().formatted())\n\n"
+            
+            // Add recent log entries
+            let logFileURL = FileLogger.shared.currentLogFileURL()
+            if FileManager.default.fileExists(atPath: logFileURL.path) {
+                do {
+                    let logContent = try String(contentsOf: logFileURL)
+                    let lines = logContent.components(separatedBy: .newlines)
+                    let recentLines = Array(lines.suffix(50)) // Last 50 lines
+                    body += "Recent Log Entries:\n"
+                    body += recentLines.joined(separator: "\n")
+                } catch {
+                    body += "Could not read log file: \(error.localizedDescription)\n"
+                }
+            } else {
+                body += "No log file found.\n"
+            }
+        }
+        
+        body += "\n\nBest regards,\nFluid User"
+        return body
+    }
+    
     // MARK: - Hotkey Manager Initialization Helpers
     private func initializeHotkeyManagerIfNeeded() {
         guard hotkeyManager == nil else { return }
@@ -3344,6 +3532,7 @@ private enum SidebarItem: Hashable {
     case audio
     case settings
     case meetingTools
+    case feedback
 }
 
 // MARK: - Embedded CoreAudio Device Manager

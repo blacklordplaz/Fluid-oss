@@ -11,6 +11,7 @@ final class FileLogger
     private let logFileURL: URL
     private let backupLogURL: URL
     private let maxLogFileSize: UInt64 = 1 * 1024 * 1024 // 1 MB limit per log file
+    private let maxLogFileAge: TimeInterval = 72 * 60 * 60 // Rotate every 72 hours
 
     private init()
     {
@@ -84,7 +85,9 @@ final class FileLogger
         {
             let attributes = try? fileManager.attributesOfItem(atPath: logFileURL.path)
             let size = attributes?[.size] as? UInt64 ?? 0
-            shouldRotate = size >= maxLogFileSize
+            let modifiedDate = attributes?[.modificationDate] as? Date ?? Date()
+            let ageExceedsLimit = Date().timeIntervalSince(modifiedDate) >= maxLogFileAge
+            shouldRotate = size >= maxLogFileSize || ageExceedsLimit
         }
 
         guard shouldRotate else { return }
