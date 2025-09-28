@@ -1753,6 +1753,20 @@ struct ContentView: View {
                                     .foregroundStyle(.orange)
                             }
 
+                            Button {
+                                let url = FileLogger.shared.currentLogFileURL()
+                                if FileManager.default.fileExists(atPath: url.path) {
+                                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                                } else {
+                                    DebugLogger.shared.info("Log file not found at \(url.path)", source: "ContentView")
+                                }
+                            } label: {
+                                Label("Reveal Log File", systemImage: "doc.richtext")
+                                    .labelStyle(.titleAndIcon)
+                            }
+                            .buttonStyle(GlassButtonStyle())
+                            .buttonHoverEffect()
+
                             Text("Enable debug logging to see detailed information about app operations. This can help with troubleshooting but may impact performance. Error and warning messages are always shown regardless of this setting.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)

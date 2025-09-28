@@ -497,11 +497,15 @@ final class ASRService: ObservableObject
                 DispatchQueue.main.async {
                     self.isDownloadingModel = true
                     self.modelDownloadProgress = 0.0
+                    DebugLogger.shared.info("Model download flagged as in-progress (progress=0)", source: "ASRService")
                 }
+                DebugLogger.shared.debug("Invoking AsrModels.downloadAndLoad()", source: "ASRService")
                 let models = try await AsrModels.downloadAndLoad()
+                DebugLogger.shared.info("AsrModels.downloadAndLoad() returned successfully", source: "ASRService")
                 DispatchQueue.main.async {
                     self.isDownloadingModel = false
                     self.modelDownloadProgress = 1.0
+                    DebugLogger.shared.info("Model download marked complete (progress=1)", source: "ASRService")
                 }
                 DebugLogger.shared.debug("FluidAudio models loaded successfully (v3)", source: "ASRService")
                 
@@ -526,6 +530,13 @@ final class ASRService: ObservableObject
             {
                 DebugLogger.shared.error("ASR initialization failed with error: \(error)", source: "ASRService")
                 DebugLogger.shared.error("Error details: \(error.localizedDescription)", source: "ASRService")
+                DispatchQueue.main.async {
+                    if self.isDownloadingModel {
+                        DebugLogger.shared.warning("Model download aborted due to error; resetting progress state", source: "ASRService")
+                    }
+                    self.isDownloadingModel = false
+                    self.modelDownloadProgress = 0.0
+                }
                 throw error
             }
             isAsrReady = true

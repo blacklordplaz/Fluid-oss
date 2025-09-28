@@ -48,9 +48,12 @@ class DebugLogger: ObservableObject {
             // Check if debug logging is enabled for debug level, but always show errors and warnings
             let shouldLogToConsole = level == .error || level == .warning || SettingsStore.shared.enableDebugLogs
 
+            let formattedLine = "[\(entry.formattedTimestamp)] [\(level.rawValue)] [\(source)] \(message)"
+            FileLogger.shared.append(line: formattedLine)
+
             if shouldLogToConsole {
                 // Also print to console for Xcode debugging
-                print("[\(entry.formattedTimestamp)] [\(level.rawValue)] [\(source)] \(message)")
+                print(formattedLine)
             }
 
             DispatchQueue.main.async {
