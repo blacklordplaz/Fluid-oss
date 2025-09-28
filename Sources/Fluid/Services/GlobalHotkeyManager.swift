@@ -8,6 +8,8 @@ final class GlobalHotkeyManager: NSObject
     private let asrService: ASRService
     private var shortcut: HotkeyShortcut
     private var stopAndProcessCallback: (() async -> Void)?
+    private var pressAndHoldMode: Bool = SettingsStore.shared.pressAndHoldMode
+    private var isKeyPressed = false
     
     private var isInitialized = false
     private var initializationTask: Task<Void, Never>?
@@ -81,7 +83,9 @@ final class GlobalHotkeyManager: NSObject
             return false
         }
 
-        let eventMask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.flagsChanged.rawValue)
+        let eventMask = (1 << CGEventType.keyDown.rawValue)
+                    | (1 << CGEventType.keyUp.rawValue)
+                    | (1 << CGEventType.flagsChanged.rawValue)
 
         eventTap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -152,63 +156,141 @@ final class GlobalHotkeyManager: NSObject
         if flags.contains(.maskControl) { eventModifiers.insert(.control) }
         if flags.contains(.maskShift) { eventModifiers.insert(.shift) }
 
-        if type == .keyDown
+        switch type
         {
-            let shortcutModifiers = shortcut.modifierFlags.intersection([.command, .option, .control, .shift])
-            if keyCode == shortcut.keyCode && eventModifiers == shortcutModifiers
+        case .keyDown:
+            if matchesShortcut(keyCode: keyCode, modifiers: eventModifiers)
             {
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-                    if self.asrService.isRunning
+                if pressAndHoldMode
+                {
+                    if !isKeyPressed
                     {
-                        if let callback = self.stopAndProcessCallback
-                        {
-                            Task { await callback() }
-                        }
-                        else
-                        {
-                            self.asrService.stopWithoutTranscription()
-                        }
+                        isKeyPressed = true
+                        startRecordingIfNeeded()
                     }
-                    else
-                    {
-                        self.asrService.start()
-                    }
+                }
+                else
+                {
+                    toggleRecording()
                 }
                 return nil
             }
-        }
-        else if type == .flagsChanged
-        {
-            if shortcut.modifierFlags.isEmpty
+
+        case .keyUp:
+            if pressAndHoldMode && isKeyPressed && matchesShortcut(keyCode: keyCode, modifiers: eventModifiers)
             {
-                let isModifierKeyPressed = flags.contains(.maskCommand) || flags.contains(.maskAlternate) || flags.contains(.maskControl) || flags.contains(.maskShift)
-                if keyCode == shortcut.keyCode && isModifierKeyPressed
+                isKeyPressed = false
+                stopRecordingIfNeeded()
+                return nil
+            }
+
+        case .flagsChanged:
+            guard shortcut.modifierFlags.isEmpty else { break }
+
+            let isModifierPressed = flags.contains(.maskCommand)
+                || flags.contains(.maskAlternate)
+                || flags.contains(.maskControl)
+                || flags.contains(.maskShift)
+
+            if keyCode == shortcut.keyCode
+            {
+                if pressAndHoldMode
                 {
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self = self else { return }
-                        if self.asrService.isRunning
+                    if isModifierPressed
+                    {
+                        if !isKeyPressed
                         {
-                            if let callback = self.stopAndProcessCallback
-                            {
-                                Task { await callback() }
-                            }
-                            else
-                            {
-                                self.asrService.stopWithoutTranscription()
-                            }
-                        }
-                        else
-                        {
-                            self.asrService.start()
+                            isKeyPressed = true
+                            startRecordingIfNeeded()
                         }
                     }
-                    return nil
+                    else if isKeyPressed
+                    {
+                        isKeyPressed = false
+                        stopRecordingIfNeeded()
+                    }
                 }
+                else if isModifierPressed
+                {
+                    toggleRecording()
+                }
+                return nil
             }
+
+        default:
+            break
         }
 
         return Unmanaged.passUnretained(event)
+    }
+
+    func enablePressAndHoldMode(_ enable: Bool)
+    {
+        pressAndHoldMode = enable
+        if !enable && isKeyPressed
+        {
+            isKeyPressed = false
+            stopRecordingIfNeeded()
+        }
+        else if enable
+        {
+            isKeyPressed = false
+        }
+    }
+
+    private func toggleRecording()
+    {
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            if self.asrService.isRunning
+            {
+                await self.stopRecordingInternal()
+            }
+            else
+            {
+                self.asrService.start()
+            }
+        }
+    }
+
+    private func startRecordingIfNeeded()
+    {
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            if !self.asrService.isRunning
+            {
+                self.asrService.start()
+            }
+        }
+    }
+
+    private func stopRecordingIfNeeded()
+    {
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            await self.stopRecordingInternal()
+        }
+    }
+
+    @MainActor
+    private func stopRecordingInternal() async
+    {
+        guard asrService.isRunning else { return }
+        if let callback = stopAndProcessCallback
+        {
+            await callback()
+        }
+        else
+        {
+            asrService.stopWithoutTranscription()
+        }
+    }
+
+    private func matchesShortcut(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> Bool
+    {
+        let relevantModifiers: NSEvent.ModifierFlags = modifiers.intersection([.command, .option, .control, .shift])
+        let shortcutModifiers = shortcut.modifierFlags.intersection([.command, .option, .control, .shift])
+        return keyCode == shortcut.keyCode && relevantModifiers == shortcutModifiers
     }
 
     func updateShortcut(_ newShortcut: HotkeyShortcut)

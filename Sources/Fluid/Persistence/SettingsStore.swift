@@ -27,6 +27,7 @@ final class SettingsStore
         static let visualizerNoiseThreshold = "VisualizerNoiseThreshold"
         static let launchAtStartup = "LaunchAtStartup"
         static let showInDock = "ShowInDock"
+        static let pressAndHoldMode = "PressAndHoldMode"
     }
 
     struct SavedProvider: Codable, Identifiable, Hashable
@@ -124,6 +125,12 @@ final class SettingsStore
                 defaults.set(data, forKey: Keys.hotkeyShortcutKey)
             }
         }
+    }
+
+    var pressAndHoldMode: Bool
+    {
+        get { defaults.bool(forKey: Keys.pressAndHoldMode) }
+        set { defaults.set(newValue, forKey: Keys.pressAndHoldMode) }
     }
 
      var preferredInputDeviceUID: String?

@@ -103,6 +103,7 @@ struct ContentView: View {
     // MARK: - AI Enhancement checkbox state
     @State private var enableAIProcessing: Bool = false
     @State private var enableDebugLogs: Bool = SettingsStore.shared.enableDebugLogs
+    @State private var pressAndHoldModeEnabled: Bool = SettingsStore.shared.pressAndHoldMode
 
     // Preferences Tab State
     @State private var launchAtStartup: Bool = SettingsStore.shared.launchAtStartup
@@ -1564,7 +1565,9 @@ struct ContentView: View {
                                         Text("Global Shortcut Active")
                                             .font(.system(.caption, weight: .semibold))
                                             .foregroundStyle(.white)
-                                        Text("Press \(hotkeyShortcut.displayString) anywhere to start/stop recording")
+                                        Text(pressAndHoldModeEnabled
+                                             ? "Hold \(hotkeyShortcut.displayString) to record and release to stop"
+                                             : "Press \(hotkeyShortcut.displayString) anywhere to start/stop recording")
                                             .font(.system(.caption))
                                             .foregroundStyle(.secondary)
                                     }
@@ -1593,6 +1596,27 @@ struct ContentView: View {
                                             .stroke(.white.opacity(0.1), lineWidth: 1)
                                     )
                             )
+                            VStack(alignment: .leading, spacing: 12) {
+                                Toggle("Press and Hold Mode", isOn: $pressAndHoldModeEnabled)
+                                    .toggleStyle(GlassToggleStyle())
+                                Text("When enabled, the shortcut only records while you hold it down, giving you quick push-to-talk style control.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(.ultraThinMaterial.opacity(0.5))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(.white.opacity(0.08), lineWidth: 1)
+                                    )
+                            )
+                            .onChange(of: pressAndHoldModeEnabled) { newValue in
+                                SettingsStore.shared.pressAndHoldMode = newValue
+                                hotkeyManager?.enablePressAndHoldMode(newValue)
+                            }
                         }
                     } else {
                         VStack(alignment: .leading, spacing: 16) {
@@ -3240,6 +3264,7 @@ struct ContentView: View {
         }
         
         hotkeyManager = GlobalHotkeyManager(asrService: asr, shortcut: hotkeyShortcut)
+        hotkeyManager?.enablePressAndHoldMode(pressAndHoldModeEnabled)
         hotkeyManager?.setStopAndProcessCallback {
             await self.stopAndProcessTranscription()
         }
