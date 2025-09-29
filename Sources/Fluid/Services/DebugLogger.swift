@@ -45,8 +45,8 @@ class DebugLogger: ObservableObject {
         queue.async {
             let entry = LogEntry(timestamp: Date(), level: level, message: message, source: source)
 
-            // Check if debug logging is enabled for debug level, but always show errors and warnings
-            let shouldLogToConsole = level == .error || level == .warning || SettingsStore.shared.enableDebugLogs
+            // Always log errors and warnings, and now also debug messages for better troubleshooting
+            let shouldLogToConsole = level == .error || level == .warning || level == .debug
 
             let formattedLine = "[\(entry.formattedTimestamp)] [\(level.rawValue)] [\(source)] \(message)"
             FileLogger.shared.append(line: formattedLine)

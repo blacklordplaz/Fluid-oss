@@ -1,4 +1,4 @@
-# Fluid
+# FluidVoice
 
 Voice-to-text dictation app for macOS with AI enhancement.
 
@@ -31,7 +31,7 @@ Voice-to-text dictation app for macOS with AI enhancement.
 ```bash
 git clone https://github.com/altic-dev/Fluid-oss.git
 cd Fluid-oss
-open Fluid.xcodeproj
+open FluidVoice.xcodeproj
 ```
 
 Build and run in Xcode. All dependencies are managed via Swift Package Manager.
@@ -50,14 +50,14 @@ Follow development updates on X: [@ALTIC_DEV](https://x.com/ALTIC_DEV)
 
 ## License
 
-This project is licensed under the [Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/).
+This project is licensed under the [Apache License 2.0](LICENSE).
 
 ---
 
 **This project is completely free and open source.** Since I don't get anything out of this other than helping the community, the only way you can support this work is by starring the repo. 
 
 **Please star this repository if:**
-- You find Fluid useful
+- You find FluidVoice useful
 - You want to see more AI improvements 
 - You appreciate free, quality software
 - You want to help others discover this tool

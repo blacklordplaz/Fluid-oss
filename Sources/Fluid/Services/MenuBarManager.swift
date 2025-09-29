@@ -190,7 +190,7 @@ final class MenuBarManager: ObservableObject {
         menu.addItem(.separator())
         
         // Open Main Window
-        let openItem = NSMenuItem(title: "Open Fluid", action: #selector(openMainWindow), keyEquivalent: "")
+        let openItem = NSMenuItem(title: "Open FluidVoice", action: #selector(openMainWindow), keyEquivalent: "")
         openItem.target = self
         menu.addItem(openItem)
         
@@ -202,7 +202,7 @@ final class MenuBarManager: ObservableObject {
         menu.addItem(.separator())
         
         // Quit
-        let quitItem = NSMenuItem(title: "Quit Fluid", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: "Quit FluidVoice", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quitItem.target = NSApp
         menu.addItem(quitItem)
     }
@@ -251,13 +251,12 @@ final class MenuBarManager: ObservableObject {
                 let msg = NSAlert()
                 if let pmkError = error as? PMKError, pmkError.isCancelled {
                     msg.messageText = "You’re Up To Date"
-                    msg.informativeText = "You’re already running the latest version of Fluid."
+                    msg.informativeText = "You're already running the latest version of FluidVoice."
                 } else {
                     msg.messageText = "Update Check Failed"
                     msg.informativeText = "Unable to check for updates. Please try again later.\n\nError: \(error.localizedDescription)"
                 }
                 msg.alertStyle = .informational
-                msg.addButton(withTitle: "OK")
                 msg.runModal()
             }
         }
@@ -275,7 +274,7 @@ final class MenuBarManager: ObservableObject {
         // Find and restore the main window
         var foundWindow = false
         for window in NSApp.windows {
-            if window.title.contains("Fluid") || window.isMainWindow || window.contentView != nil {
+            if window.title.contains("FluidVoice") || window.isMainWindow || window.contentView != nil {
                 // Handle minimized windows
                 if window.isMiniaturized {
                     window.deminiaturize(nil)

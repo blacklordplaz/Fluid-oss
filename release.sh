@@ -2,7 +2,7 @@
 
 set -e  # Exit on any error
 
-echo "🚀 Starting Fluid release process..."
+echo "🚀 Starting FluidVoice release process..."
 
 # Get version from Info.plist
 VERSION=$(plutil -p Info.plist | grep CFBundleShortVersionString | cut -d '"' -f 4)
@@ -29,7 +29,7 @@ if gh release view "v$VERSION" --repo altic-dev/Fluid-oss >/dev/null 2>&1; then
 fi
 
 # Use pre-built app from Documents
-APP_PATH="/Users/barathwajanandan/Documents/Fluid.app"
+APP_PATH="/Users/barathwajanandan/Documents/FluidVoice.app"
 echo "📱 Using pre-built app: $APP_PATH"
 if [ ! -d "$APP_PATH" ]; then
     echo "❌ Error: Built app not found at $APP_PATH"
@@ -40,7 +40,7 @@ fi
 ZIP_NAME="Fluid-oss-${VERSION}.zip"
 echo "📦 Creating release zip: $ZIP_NAME"
 cd "$(dirname "$APP_PATH")"
-zip -r "$OLDPWD/$ZIP_NAME" Fluid.app
+zip -r "$OLDPWD/$ZIP_NAME" FluidVoice.app
 cd "$OLDPWD"
 
 # Verify zip was created
@@ -56,11 +56,11 @@ DMG_NAME="Fluid-oss-${VERSION}.dmg"
 echo "💿 Creating DMG: $DMG_NAME"
 
 create-dmg \
-  --volname "Fluid Installer" \
+  --volname "FluidVoice Installer" \
   --window-size 600 400 \
   --icon-size 100 \
-  --icon "Fluid.app" 150 150 \
-  --hide-extension "Fluid.app" \
+  --icon "FluidVoice.app" 150 150 \
+  --hide-extension "FluidVoice.app" \
   --app-drop-link 400 150 \
   "$DMG_NAME" \
   "$APP_PATH"
@@ -68,26 +68,32 @@ create-dmg \
 echo "✅ DMG created successfully: $DMG_NAME"
 
 # Create GitHub release
-echo "📤 Creating GitHub release..."
+echo "Creating GitHub release..."
 gh release create "v$VERSION" "$ZIP_NAME" "$DMG_NAME" \
   --repo altic-dev/Fluid-oss \
-  --title "Fluid v$VERSION" \
+  --title "FluidVoice v$VERSION" \
   --notes "## What's New in v$VERSION
 
-- Upgraded to Parakeet TDT v3 with unified model architecture
-- 25 European languages with auto-detection support
-- Enhanced UI with language selection and documentation links
-- Improved error handling and logging
-- Automatic updates support
-- Fixed UI glitches with light system preference
+UI improvements and updater testing
+
+### Changes
+- **Simplified Debug Settings**: Removed confusing debug logging toggle, kept only 'Reveal Log File' button
+- **Always-on Debug Logging**: Debug information is now always logged to help with troubleshooting
+- **Cleaner UI**: Streamlined debug settings section with better description
+- **Testing auto-updater**: Verifies the fixed updater works properly for FluidVoice → FluidVoice updates
+
+### Note
+This release tests the fixed updater from v1.3.1 and improves the debug settings interface.
+
 "
 
-echo "✅ Release v$VERSION created successfully!"
-echo "🔗 Release URL: https://github.com/altic-dev/Fluid-oss/releases/tag/v$VERSION"
-echo "📁 Assets: $ZIP_NAME and $DMG_NAME"
+echo "Release v$VERSION created successfully!"
+echo "Release URL: https://github.com/altic-dev/Fluid-oss/releases/tag/v$VERSION"
+echo "Assets: $ZIP_NAME and $DMG_NAME"
 
 # Clean up
-echo "🧹 Cleaning up..."
+echo "Cleaning up..."
 rm "$ZIP_NAME" "$DMG_NAME"
 
+echo "Release process completed successfully!"
 echo "🎉 Release process completed successfully!"

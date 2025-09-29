@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "Fluid",
+    name: "FluidVoice",
     platforms: [
         .macOS(.v13)
     ],
@@ -15,7 +15,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "Fluid",
+            name: "FluidVoice",
             dependencies: [
                 "AppUpdater",
                 "FluidAudio",

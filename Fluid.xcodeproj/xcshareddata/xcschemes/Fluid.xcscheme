@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "7C078D8E2E3B339200FB7CAC"
-               BuildableName = "Fluid.app"
+               BuildableName = "FluidVoice.app"
                BlueprintName = "fluid"
                ReferencedContainer = "container:Fluid.xcodeproj">
             </BuildableReference>
@@ -45,7 +45,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7C078D8E2E3B339200FB7CAC"
-            BuildableName = "Fluid.app"
+            BuildableName = "FluidVoice.app"
             BlueprintName = "fluid"
             ReferencedContainer = "container:Fluid.xcodeproj">
          </BuildableReference>
@@ -62,7 +62,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7C078D8E2E3B339200FB7CAC"
-            BuildableName = "Fluid.app"
+            BuildableName = "FluidVoice.app"
             BlueprintName = "fluid"
             ReferencedContainer = "container:Fluid.xcodeproj">
          </BuildableReference>

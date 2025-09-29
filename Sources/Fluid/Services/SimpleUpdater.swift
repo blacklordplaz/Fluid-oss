@@ -221,20 +221,67 @@ final class SimpleUpdater {
     }
 
     private func performSwapAndRelaunch(installedAppURL: URL, downloadedAppURL: URL) throws {
-        // Replace bundle on disk
-        try FileManager.default.removeItem(at: installedAppURL)
-        try FileManager.default.moveItem(at: downloadedAppURL, to: installedAppURL)
+        // Handle app name changes: if the downloaded app has a different name,
+        // we need to replace the old app and use the new name
+        let installedAppName = installedAppURL.lastPathComponent
+        let downloadedAppName = downloadedAppURL.lastPathComponent
+        
+        print("SimpleUpdater: Installing app - Current: \(installedAppName), New: \(downloadedAppName)")
+        
+        let finalAppURL: URL
+        if installedAppName != downloadedAppName {
+            // App name changed - use the new name
+            finalAppURL = installedAppURL.deletingLastPathComponent().appendingPathComponent(downloadedAppName)
+            print("SimpleUpdater: App name changed, installing to: \(finalAppURL.path)")
+            
+            // Safety check: ensure we don't overwrite an existing app with the new name
+            if FileManager.default.fileExists(atPath: finalAppURL.path) {
+                print("SimpleUpdater: Removing existing app at new location: \(finalAppURL.path)")
+                try FileManager.default.removeItem(at: finalAppURL)
+            }
+            
+            // Remove old app if it exists
+            if FileManager.default.fileExists(atPath: installedAppURL.path) {
+                print("SimpleUpdater: Removing old app: \(installedAppURL.path)")
+                try FileManager.default.removeItem(at: installedAppURL)
+            }
+            
+            // Move new app to Applications with new name
+            try FileManager.default.moveItem(at: downloadedAppURL, to: finalAppURL)
+            print("SimpleUpdater: Successfully installed new app at: \(finalAppURL.path)")
+        } else {
+            // Same name - normal replacement
+            print("SimpleUpdater: Same app name, performing normal replacement")
+            if FileManager.default.fileExists(atPath: installedAppURL.path) {
+                try FileManager.default.removeItem(at: installedAppURL)
+            }
+            try FileManager.default.moveItem(at: downloadedAppURL, to: installedAppURL)
+            finalAppURL = installedAppURL
+        }
 
         // Use modern NSWorkspace API for more reliable app launching
         DispatchQueue.main.async {
+            print("SimpleUpdater: Attempting to relaunch app at: \(finalAppURL.path)")
+            
+            // Verify the app exists before trying to launch
+            guard FileManager.default.fileExists(atPath: finalAppURL.path) else {
+                print("SimpleUpdater: ERROR - App not found at expected location: \(finalAppURL.path)")
+                // Don't terminate if we can't find the new app
+                return
+            }
+            
             let configuration = NSWorkspace.OpenConfiguration()
             configuration.createsNewApplicationInstance = true
             
-            NSWorkspace.shared.openApplication(at: installedAppURL, configuration: configuration) { app, error in
+            NSWorkspace.shared.openApplication(at: finalAppURL, configuration: configuration) { app, error in
                 if let error = error {
-                    print("Failed to relaunch app: \(error)")
+                    print("SimpleUpdater: Failed to relaunch app: \(error)")
+                    print("SimpleUpdater: App location: \(finalAppURL.path)")
+                    // Don't terminate if relaunch failed - let user manually restart
+                    return
                 }
                 
+                print("SimpleUpdater: Successfully relaunched app, terminating old instance")
                 // Give the new instance time to fully start before terminating
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     NSApp.terminate(nil)

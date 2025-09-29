@@ -110,7 +110,7 @@ struct ContentView: View {
     @State private var showInDock: Bool = SettingsStore.shared.showInDock
     @State private var showRestartPrompt: Bool = false
     @State private var didOpenAccessibilityPane: Bool = false
-    private let accessibilityRestartFlagKey = "Fluid_AccessibilityRestartPending"
+    private let accessibilityRestartFlagKey = "FluidVoice_AccessibilityRestartPending"
     
     // MARK: - Voice Recognition Model Management
     // Models scoped by provider (name -> [models])
@@ -447,7 +447,7 @@ struct ContentView: View {
             .listRowBackground(sidebarRowBackground)
         }
         .listStyle(.sidebar)
-        .navigationTitle("Fluid")
+        .navigationTitle("FluidVoice")
         .background(sidebarBackground)
         .scrollContentBackground(.hidden)
     }
@@ -552,14 +552,14 @@ struct ContentView: View {
                             .font(.system(size: 32))
                             .foregroundStyle(.blue)
                         VStack(alignment: .leading) {
-                            Text("Welcome to Fluid")
+                            Text("Welcome to FluidVoice")
                                 .font(.system(size: 28, weight: .bold))
                             Text("Your AI-powered voice transcription assistant")
                                 .font(.system(size: 16))
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    Text("Follow this quick setup to start using Fluid.")
+                    Text("Follow this quick setup to start using FluidVoice.")
                         .font(.system(size: 14))
                         .foregroundStyle(.secondary)
                         .padding(.top, 4)
@@ -580,7 +580,7 @@ struct ContentView: View {
                             SetupStepView(
                                 step: 1,
                                 title: "Grant Microphone Permission",
-                                description: "Allow Fluid to access your microphone for voice input",
+                                description: "Allow FluidVoice to access your microphone for voice input",
                                 status: asr.micStatus == .authorized ? .completed : .pending,
                                 action: {
                                     selectedSidebarItem = .recording
@@ -1202,8 +1202,8 @@ struct ContentView: View {
                     instructionStep(number: "2", text: "Choose **Allow** in the system dialog")
                 } else if asr.micStatus == .denied {
                     instructionStep(number: "1", text: "Click **Open Settings** above")
-                    instructionStep(number: "2", text: "Find **Fluid** in the microphone list")
-                    instructionStep(number: "3", text: "Toggle **Fluid ON** to allow access")
+                    instructionStep(number: "2", text: "Find **FluidVoice** in the microphone list")
+                    instructionStep(number: "3", text: "Toggle **FluidVoice ON** to allow access")
                 }
             }
             .padding(.leading, 4)
@@ -1273,7 +1273,7 @@ struct ContentView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Launch at startup")
                                         .font(.headline)
-                                    Text("Automatically start Fluid when you log in")
+                                    Text("Automatically start FluidVoice when you log in")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -1293,7 +1293,7 @@ struct ContentView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Show in Dock")
                                         .font(.headline)
-                                    Text("Display Fluid icon in the Dock")
+                                    Text("Display FluidVoice icon in the Dock")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -1699,7 +1699,7 @@ struct ContentView: View {
                                             .foregroundStyle(.blue)
                                             .fontWeight(.semibold)
                                             .frame(width: 16)
-                                        Text("Navigate to Applications and select **Fluid**")
+                                        Text("Navigate to Applications and select **FluidVoice**")
                                             .font(.caption)
                                             .foregroundStyle(.primary)
                                     }
@@ -1709,7 +1709,7 @@ struct ContentView: View {
                                             .foregroundStyle(.blue)
                                             .fontWeight(.semibold)
                                             .frame(width: 16)
-                                        Text("Click **Open**, then toggle **Fluid ON** in the list")
+                                        Text("Click **Open**, then toggle **FluidVoice ON** in the list")
                                             .font(.caption)
                                             .foregroundStyle(.primary)
                                     }
@@ -1718,7 +1718,7 @@ struct ContentView: View {
                                 
                                 // Helper buttons
                                 HStack(spacing: 12) {
-                                    Button("Reveal Fluid in Finder") { 
+                                    Button("Reveal FluidVoice in Finder") { 
                                         revealAppInFinder() 
                                     }
                                     .buttonStyle(InlineButtonStyle())
@@ -1754,18 +1754,6 @@ struct ContentView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 12) {
-                            HStack(spacing: 12) {
-                                Toggle("Enable Debug Logging", isOn: Binding(
-                                    get: { SettingsStore.shared.enableDebugLogs },
-                                    set: { SettingsStore.shared.enableDebugLogs = $0 }
-                                ))
-                                .toggleStyle(GlassToggleStyle())
-
-                                Text("⚠️")
-                                    .font(.caption)
-                                    .foregroundStyle(.orange)
-                            }
-
                             Button {
                                 let url = FileLogger.shared.currentLogFileURL()
                                 if FileManager.default.fileExists(atPath: url.path) {
@@ -1780,7 +1768,7 @@ struct ContentView: View {
                             .buttonStyle(GlassButtonStyle())
                             .buttonHoverEffect()
 
-                            Text("Enable debug logging to see detailed information about app operations. This can help with troubleshooting but may impact performance. Error and warning messages are always shown regardless of this setting.")
+                            Text("Click to reveal the debug log file. This file contains detailed information about app operations and can help with troubleshooting issues.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .padding(.leading, 4)
@@ -2605,7 +2593,7 @@ struct ContentView: View {
                         VStack(alignment: .leading) {
                             Text("Send Feedback")
                                 .font(.system(size: 28, weight: .bold))
-                            Text("Help us improve Fluid")
+                            Text("Help us improve FluidVoice")
                                 .font(.system(size: 16))
                                 .foregroundStyle(.secondary)
                         }
@@ -2696,7 +2684,7 @@ struct ContentView: View {
         .alert("Feedback Sent", isPresented: $showFeedbackConfirmation) {
             Button("OK") { }
         } message: {
-            Text("Thank you for helping us improve Fluid.")
+            Text("Thank you for helping us improve FluidVoice.")
         }
     }
 
