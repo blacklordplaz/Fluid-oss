@@ -470,6 +470,13 @@ final class ASRService: ObservableObject
             return
         }
 
+        // CRITICAL FIX: Early return if already ready to prevent UI flicker and crashes
+        // This prevents unnecessary state resets that can cause SwiftUI object deallocation
+        if isAsrReady {
+            DebugLogger.shared.debug("ASR already marked as ready, skipping state reset", source: "ASRService")
+            return
+        }
+
         // Force reinitialization for v3 models by resetting state
         isAsrReady = false
         asrManager = nil

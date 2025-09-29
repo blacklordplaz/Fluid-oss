@@ -146,7 +146,10 @@ struct ContentView: View {
     
     // Feedback State
     @State private var feedbackText: String = ""
+    @State private var feedbackEmail: String = ""
     @State private var includeDebugLogs: Bool = false
+    @State private var isSendingFeedback: Bool = false
+    @State private var showFeedbackConfirmation: Bool = false
 
     var body: some View {
         NavigationSplitView {
@@ -2602,34 +2605,30 @@ struct ContentView: View {
                         VStack(alignment: .leading) {
                             Text("Send Feedback")
                                 .font(.system(size: 28, weight: .bold))
-                            Text("Help us improve Fluid with your feedback")
+                            Text("Help us improve Fluid")
                                 .font(.system(size: 16))
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    Text("Share your thoughts, report bugs, or suggest new features.")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 4)
                 }
                 .padding(.bottom, 8)
 
                 // Feedback Form
                 HoverableGlossyCard {
                     VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Image(systemName: "text.bubble.fill")
-                                .font(.title2)
-                                .foregroundStyle(.white)
-                            Text("Your Feedback")
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                        }
-
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Message")
+                            Text("Email")
                                 .font(.headline)
                                 .fontWeight(.semibold)
+
+                            TextField("your.email@example.com", text: $feedbackEmail)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(size: 14))
+
+                            Text("Feedback")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .padding(.top, 8)
 
                             TextEditor(text: $feedbackText)
                                 .font(.system(size: 14))
@@ -2646,55 +2645,44 @@ struct ContentView: View {
                                 .overlay(
                                     VStack {
                                         if feedbackText.isEmpty {
-                                            VStack(spacing: 4) {
-                                                Text("Share your thoughts...")
-                                                    .font(.subheadline)
-                                                    .foregroundStyle(.secondary)
-                                                Text("• Report bugs or issues")
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                                Text("• Suggest new features")
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                                Text("• General feedback")
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
+                                            Text("Share your thoughts, report bugs, or suggest features...")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
                                         }
                                     }
                                     .allowsHitTesting(false)
                                 )
 
-                            // Attachment Options
-                            VStack(alignment: .leading, spacing: 8) {
-                                Toggle("Include debug logs", isOn: $includeDebugLogs)
-                                    .toggleStyle(GlassToggleStyle())
-                                
-                                if includeDebugLogs {
-                                    Text("Debug logs will help us diagnose issues faster. No personal data is included.")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .padding(.leading, 4)
-                                }
-                            }
+                            // Debug logs option
+                            Toggle("Include debug logs", isOn: $includeDebugLogs)
+                                .toggleStyle(GlassToggleStyle())
 
                             // Send Button
                             HStack {
                                 Spacer()
                                 
                                 Button(action: {
-                                    sendFeedback()
+                                    Task {
+                                        await sendFeedback()
+                                    }
                                 }) {
                                     HStack(spacing: 8) {
-                                        Image(systemName: "paperplane.fill")
-                                        Text("Send Feedback")
+                                        if isSendingFeedback {
+                                            ProgressView()
+                                                .scaleEffect(0.8)
+                                        } else {
+                                            Image(systemName: "paperplane.fill")
+                                        }
+                                        Text(isSendingFeedback ? "Sending..." : "Send Feedback")
                                             .fontWeight(.semibold)
                                     }
                                     .padding(.horizontal, 20)
                                     .padding(.vertical, 10)
                                 }
                                 .buttonStyle(GlassButtonStyle())
-                                .disabled(feedbackText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                                .disabled(feedbackText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || 
+                                         feedbackEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                                         isSendingFeedback)
                                 .buttonHoverEffect()
                             }
                         }
@@ -2702,44 +2690,13 @@ struct ContentView: View {
                     .padding(20)
                 }
                 .modifier(CardAppearAnimation(delay: 0.1, appear: $appear))
-
-                // Contact Info
-                HoverableGlossyCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Image(systemName: "info.circle.fill")
-                                .font(.title3)
-                                .foregroundStyle(.blue)
-                            Text("Contact Information")
-                                .font(.headline)
-                                .fontWeight(.semibold)
-                        }
-
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Image(systemName: "envelope")
-                                    .foregroundStyle(.secondary)
-                                Text("alticdev@gmail.com")
-                                    .font(.subheadline)
-                                Spacer()
-                                Button("Copy") {
-                                    NSPasteboard.general.clearContents()
-                                    NSPasteboard.general.setString("alticdev@gmail.com", forType: .string)
-                                }
-                                .buttonStyle(InlineButtonStyle())
-                                .buttonHoverEffect()
-                            }
-                            
-                            Text("We typically respond within 24-48 hours.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(16)
-                }
-                .modifier(CardAppearAnimation(delay: 0.2, appear: $appear))
             }
             .padding(24)
+        }
+        .alert("Feedback Sent", isPresented: $showFeedbackConfirmation) {
+            Button("OK") { }
+        } message: {
+            Text("Thank you for helping us improve Fluid.")
         }
     }
 
@@ -3400,41 +3357,47 @@ struct ContentView: View {
     }
     
     // MARK: - Feedback Functions
-    private func sendFeedback() {
-        let subject = "Fluid App Feedback"
-        let body = createFeedbackEmailBody()
+    private func sendFeedback() async {
+        guard !feedbackEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !feedbackText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
         
-        // Create mailto URL
-        var components = URLComponents()
-        components.scheme = "mailto"
-        components.path = "alticdev@gmail.com"
-        components.queryItems = [
-            URLQueryItem(name: "subject", value: subject),
-            URLQueryItem(name: "body", value: body)
-        ]
+        await MainActor.run {
+            isSendingFeedback = true
+        }
         
-        if let mailtoURL = components.url {
-            NSWorkspace.shared.open(mailtoURL)
+        do {
+            let feedbackData = createFeedbackData()
+            let success = await submitFeedback(data: feedbackData)
             
-            // Clear the feedback form after sending
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                feedbackText = ""
-                includeDebugLogs = false
+            await MainActor.run {
+                isSendingFeedback = false
+                if success {
+                    // Show confirmation and clear form
+                    showFeedbackConfirmation = true
+                    feedbackText = ""
+                    feedbackEmail = ""
+                    includeDebugLogs = false
+                }
             }
+        } catch {
+            await MainActor.run {
+                isSendingFeedback = false
+            }
+            DebugLogger.shared.error("Failed to send feedback: \(error.localizedDescription)", source: "ContentView")
         }
     }
     
-    private func createFeedbackEmailBody() -> String {
-        var body = "Hi Fluid Team,\n\n"
-        body += feedbackText
-        body += "\n\n"
+    private func createFeedbackData() -> [String: Any] {
+        var feedbackContent = feedbackText.trimmingCharacters(in: .whitespacesAndNewlines)
         
         if includeDebugLogs {
-            body += "--- Debug Information ---\n"
-            body += "App Version: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")\n"
-            body += "Build: \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown")\n"
-            body += "macOS Version: \(ProcessInfo.processInfo.operatingSystemVersionString)\n"
-            body += "Date: \(Date().formatted())\n\n"
+            feedbackContent += "\n\n--- Debug Information ---\n"
+            feedbackContent += "App Version: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")\n"
+            feedbackContent += "Build: \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown")\n"
+            feedbackContent += "macOS Version: \(ProcessInfo.processInfo.operatingSystemVersionString)\n"
+            feedbackContent += "Date: \(Date().formatted())\n\n"
             
             // Add recent log entries
             let logFileURL = FileLogger.shared.currentLogFileURL()
@@ -3442,19 +3405,49 @@ struct ContentView: View {
                 do {
                     let logContent = try String(contentsOf: logFileURL)
                     let lines = logContent.components(separatedBy: .newlines)
-                    let recentLines = Array(lines.suffix(50)) // Last 50 lines
-                    body += "Recent Log Entries:\n"
-                    body += recentLines.joined(separator: "\n")
+                    let recentLines = Array(lines.suffix(30)) // Last 30 lines
+                    feedbackContent += "Recent Log Entries:\n"
+                    feedbackContent += recentLines.joined(separator: "\n")
                 } catch {
-                    body += "Could not read log file: \(error.localizedDescription)\n"
+                    feedbackContent += "Could not read log file: \(error.localizedDescription)\n"
                 }
-            } else {
-                body += "No log file found.\n"
             }
         }
         
-        body += "\n\nBest regards,\nFluid User"
-        return body
+        return [
+            "email_id": feedbackEmail.trimmingCharacters(in: .whitespacesAndNewlines),
+            "feedback": feedbackContent
+        ]
+    }
+    
+    private func submitFeedback(data: [String: Any]) async -> Bool {
+        guard let url = URL(string: "https://altic.dev/api/fluid/feedback") else {
+            DebugLogger.shared.error("Invalid feedback API URL", source: "ContentView")
+            return false
+        }
+        
+        do {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONSerialization.data(withJSONObject: data)
+            
+            let (_, response) = try await URLSession.shared.data(for: request)
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                let success = (200...299).contains(httpResponse.statusCode)
+                if success {
+                    DebugLogger.shared.info("Feedback submitted successfully", source: "ContentView")
+                } else {
+                    DebugLogger.shared.error("Feedback submission failed with status: \(httpResponse.statusCode)", source: "ContentView")
+                }
+                return success
+            }
+            return false
+        } catch {
+            DebugLogger.shared.error("Network error submitting feedback: \(error.localizedDescription)", source: "ContentView")
+            return false
+        }
     }
     
     // MARK: - Hotkey Manager Initialization Helpers
